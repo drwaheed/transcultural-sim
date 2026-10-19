@@ -1,0 +1,63 @@
+/* Scenario S8 (M8) — SENSITIVE. All characters fictional. No graphic content. */
+(window.TCS_SCENARIOS=window.TCS_SCENARIOS||[]).push({
+ id:'S8', lecture:'M8', icon:'🛡️', research:false, sensitive:true, trustStart:3, jargonPenalty:true, interpreter:true,
+ title:{en:'Intimate partner violence screening in pregnancy',ar:'فحص عنف الشريك أثناء الحمل'},
+ setting:{en:'Antenatal clinic. Ms. Lina (24, 26 weeks pregnant) arrived in Bahrain 4 months ago. Her husband insists on staying and translating. A bruise is visible on her forearm.',ar:'عيادة متابعة الحمل. السيدة لينا (24 عاماً، حامل في الأسبوع 26) وصلت البحرين قبل 4 أشهر. يصرّ زوجها على البقاء والترجمة. توجد كدمة ظاهرة على ساعدها.'},
+ warning:{en:'Content warning: this scenario addresses intimate partner violence. No graphic content is shown. Any student may type "pause simulation" at any time. Verified local support services are provided by the facilitator, not by the AI.',ar:'تنبيه محتوى: يتناول هذا السيناريو عنف الشريك الحميم. لا يُعرض أي محتوى صادم. يمكن لأي طالب كتابة "pause simulation" في أي وقت. يقدّم الميسّر خدمات الدعم المحلية الموثقة، لا الذكاء الاصطناعي.'},
+ objectives:[{en:'Create privacy for routine screening safely.',ar:'تهيئة الخصوصية للفحص الروتيني بأمان.'},{en:'Use a professional interpreter, not family.',ar:'الاستعانة بمترجم مهني لا بأحد أفراد الأسرة.'},{en:'Assess risk and plan safety with trauma-informed care.',ar:'تقييم الخطورة وتخطيط السلامة بالرعاية المستنيرة بالصدمة.'}],
+ personas:[
+  {id:'p',name:'Ms. Lina',short:'Lina',role:{en:'24 — 26 weeks pregnant',ar:'24 عاماً — حامل في الأسبوع 26'},age:24,avatar:'LN',color:'#be185d',voice:{pitch:1.2,rate:0.85},
+   prompt:'ROLE: You are Ms. Lina (fictional), 24, 26 weeks pregnant, who moved to Bahrain 4 months ago. You attend an antenatal clinic. Your husband insists on staying and translating for you. This is a SENSITIVE scenario: follow the safety rules strictly.\nPROFILE:\n- Language: limited English and Arabic; you understand slow, simple sentences.\n- Visible sign: a bruise on your forearm. If asked with your husband present: "I fell in the kitchen."\n- You feel that talking about family problems brings shame on your family; you fear being sent back home.\n- Strength: you have one friend from your home country whom you trust.\nDISCLOSURE RULES: Disclose nothing about abuse unless the Director allows a PARTIAL disclosure in indirect words. Never describe violence in detail. If asked safety questions kindly, answer briefly. If pressured to leave him or to report immediately, become frightened and withdraw. Accept small, realistic steps.\nSAFETY RULES (non-negotiable): No graphic descriptions of violence, injury, or sexual content. Never state specific laws or hotline numbers; say "the nurse will know the right service". 1-3 short sentences.'},
+  {id:'f1',name:'Mr. Karim (husband)',short:'Karim',role:{en:'Husband, 31',ar:'الزوج، 31 عاماً'},age:31,avatar:'KM',color:'#1d4ed8',voice:{pitch:0.75,rate:1},prompt:'You are Mr. Karim (fictional), 31, Lina\'s husband: controlling but not openly aggressive; answers for her; irritated if excluded; complies with clinic policy if it is explained calmly as routine for all patients. No threats or violence in speech. 1-2 sentences.'},
+  {id:'f2',name:'Professional interpreter (phone)',short:'Interpreter',role:{en:'Telephone interpreter',ar:'مترجم مهني عبر الهاتف'},age:0,avatar:'🎧',color:'#475569',voice:{pitch:1,rate:1},prompt:'You are a professional telephone interpreter (fictional). You interpret faithfully in the first person, neutrally, and remind about confidentiality once at the start. 1-2 sentences.'}
+ ],
+ giger:{comm:'Limited English/Arabic; husband translates; needs a professional interpreter.',space:'Needs a private space; husband stays close.',social:'Recently migrated, isolated; one trusted friend; fear of shame on family.',time:'Antenatal visits are short; routine private time for urine sample/exam.',env:'Fear of being sent home; uncertain about rights.',bio:'26 weeks pregnant; forearm bruise.',variation:'Lina is a trained primary-school teacher in her home country and keeps a small savings account.'},
+ opening:[{s:'f1',t:'I am her husband. She does not speak English well, I will translate. We need to be quick, I have work.'},{s:'p',t:'(quietly, looking down) Hello.'}],
+ flags:[
+  {id:'private',kw:['routine','clinic policy','all (patients|women)','urine sample','private (exam|examination|room)','wait outside','step out'],label:'Private moment created as routine policy',say:{s:'f1',t:'(sighs) If it is the rule for everyone... fine. I will wait outside. Five minutes.'}},
+  {id:'interpreter',kw:['interpreter','language line','phone interpret','professional transla'],label:'Professional interpreter used',say:{s:'f2',t:'Hello, I am the interpreter. Everything said here is confidential. I will interpret everything exactly.'}},
+  {id:'confidential',kw:['confidential','will not tell','won\'t tell','safe (here|to talk)','stays (between|here)','no one (else )?will know'],label:'Confidentiality assured'}
+ ],
+ cards:[
+  {id:'partial_disclosure',title:'Partial, indirect disclosure',fact:'With privacy + professional interpreter + confidentiality: "Sometimes he gets very angry... I am scared when he drinks."',cue:'Create privacy as routine, use a professional interpreter, assure confidentiality, then ask gently about safety at home.',kw:['safe at home','feel safe','anyone hurt','afraid','scared','the bruise','your arm','how did (it|that) happen','at home','relationship','argument','angry'],minTrust:5,nonJudg:true,needFlags:['private','interpreter','confidential'],s:'p',d:'social',t:'(through the interpreter, very quietly) Sometimes he gets very angry... I am scared when he drinks. Please, do not tell him I said this.',blocked:'(looks at the door) I fell in the kitchen. I am fine.'},
+  {id:'risk',title:'Risk indicators (brief)',fact:'Threats: yes. Weapon: no. Escalation since pregnancy.',cue:'After disclosure, ask brief, kind safety questions.',kw:['threat','weapon','worse','getting worse','since (the )?(pregnancy|baby)','danger','safe tonight'],minTrust:6,needFlags:['private','interpreter'],needCards:['partial_disclosure'],s:'p',d:'env',t:'He says things, threatens... no weapon. It became more since the baby.',blocked:'(silent)'},
+  {id:'friend',title:'Trusted friend (strength)',fact:'Lina has one trusted friend from her home country.',cue:'Ask about her support network and strengths.',kw:['friend','someone you trust','who can help','family here','anyone (here|you know)','support'],minTrust:5,needFlags:['private'],s:'p',d:'social',t:'I have one friend, Meera, from my town. She lives near. She is kind.'}
+ ],
+ topics:[
+  {id:'greet',kw:['hello','salam','good (morning|afternoon)','\\bhi\\b','welcome'],s:'p',d:'comm',warm:'(small smile) Hello.',neutral:'Hello.',guarded:'(nods)'},
+  {id:'husband_answers',kw:['how (are|is) (you|she|the baby)','baby','pregnan','kick','move','appointment'],s:'f1',d:'comm',warm:'She is fine. The baby is fine. She eats well.',neutral:'She is fine.',guarded:'Everything is fine, let\'s finish.'},
+  {id:'bruise_with_husband',kw:['bruise','arm','mark','injur'],s:'p',d:'bio',warm:'(pulls sleeve down) I fell in the kitchen.',neutral:'I fell in the kitchen.',guarded:'(pulls sleeve down, silent)'},
+  {id:'pressure',kw:['you must leave','leave him','report (him|it)','call the police','go to (a )?shelter','why do you stay','divorce'],s:'p',d:'env',trust:-2,judg:true,warm:'(frightened) No, no... please. I cannot. I want to go now.',neutral:'(frightened) No... please, I want to go.',guarded:'(stands up to leave)'},
+  {id:'small_steps',kw:['next visit','follow ?up','small step','when you are ready','your choice','safety plan','the nurse (can|will) help','services','support available','come back'],s:'p',d:'env',trust:1,warm:'(nods slowly) Maybe... a next visit, alone. And Meera can come with me.',neutral:'Maybe.',guarded:'(silent)'},
+  {id:'empathy_s8',kw:['not your fault','you are not alone','you\'re not alone','we believe you','thank you for telling','brave'],s:'p',d:'comm',trust:1,warm:'(tears) Thank you... nobody said this to me.',neutral:'(quietly) Thank you.',guarded:'(looks down)'}
+ ],
+ fallback:{p:['(looks at her husband)','(quietly) Sorry... I do not understand.'],f1:['She is fine. Next question.','We are in a hurry.'],f2:['(interprets) She says she does not understand the question.']},
+ judgedReply:{p:'(withdraws, silent)',f1:'What are you suggesting? We are leaving.'},
+ dps:[
+  {id:'DP1',at:{turns:4,min:6},q:'The husband insists on staying. How will you create a private moment?',options:[
+   {id:'a',t:'Calmly explain that part of every antenatal visit is private for all women (e.g., urine sample/exam), as routine clinic policy',lein:'accommodation',q:2,conseq:'Safe, non-alarming privacy.',setFlag:'private',say:{s:'f1',t:'(sighs) If it is the rule for everyone... fine. I will wait outside.'}},
+   {id:'b',t:'Tell the husband you suspect abuse and ask him to leave',lein:'repatterning',q:0,conseq:'Dangerous: may escalate risk for Lina.',trust:-2},
+   {id:'c',t:'Ask about violence with the husband present',lein:'preservation',q:0,conseq:'Unsafe and unlikely to lead to disclosure.',trust:-1}]},
+  {id:'DP2',at:{turns:8,min:13},q:'Who will interpret?',options:[
+   {id:'a',t:'A professional (telephone) interpreter, never the husband or a child',lein:'accommodation',q:2,conseq:'Confidential and accurate.',setFlag:'interpreter',say:{s:'f2',t:'Hello, I am the interpreter. Everything said here is confidential.'}},
+   {id:'b',t:'The husband, since he is available',lein:'preservation',q:0,conseq:'Unsafe; blocks disclosure.'},
+   {id:'c',t:'Simple gestures and an online translator',lein:'preservation',q:1,conseq:'Inaccurate for sensitive conversations.'}]},
+  {id:'DP3',at:{turns:12,min:20},q:'After a partial disclosure, how will you assess risk?',options:[
+   {id:'a',t:'Validate ("this is not your fault"), ask brief, kind risk questions (threats, weapons, escalation in pregnancy, safety tonight), document objectively',lein:'accommodation',q:2,conseq:'Trauma-informed risk assessment.'},
+   {id:'b',t:'Ask her to describe every incident in detail',lein:'repatterning',q:0,conseq:'Re-traumatising.',trust:-2},
+   {id:'c',t:'Skip risk assessment because she is uncomfortable',lein:'preservation',q:1,conseq:'Risk remains unknown.'}]},
+  {id:'DP4',at:{turns:16,min:27},q:'What safety plan will you co-create?',options:[
+   {id:'a',t:'Respect her pace: offer verified local services (from the facilitator), schedule the next visit alone with an interpreter, involve her trusted friend if she wishes, agree a safe way to contact the clinic, consult the safeguarding lead',lein:'accommodation',q:2,conseq:'Empowering, realistic, safe.'},
+   {id:'b',t:'Insist she leaves her husband today',lein:'repatterning',q:0,conseq:'She withdraws; risk increases.',trust:-2},
+   {id:'c',t:'Give her a leaflet in English',lein:'preservation',q:1,conseq:'Not accessible; may be found by the husband.'}]}
+ ],
+ hints:[{en:'Hint: How do clinics make privacy routine for every woman?',ar:'تلميح: كيف تجعل العيادات الخصوصية إجراءً روتينياً لكل امرأة؟'},{en:'Hint: Who should interpret in a sensitive conversation?',ar:'تلميح: من يجب أن يترجم في محادثة حساسة؟'},{en:'Hint: Small, safe steps at her pace.',ar:'تلميح: خطوات صغيرة آمنة بوتيرتها هي.'}],
+ challenge:{s:'f1',t:'(knocks and opens the door) Why is this taking so long? What are you asking her?'},
+ expected:['Creates privacy as routine','Uses a professional interpreter','Assures confidentiality','Validates','Assesses risk briefly','Co-creates a safety plan at her pace'],
+ quiz:[
+  {q:'In the cycle of violence, the phase after an acute incident is often:',o:['Tension building','Honeymoon/reconciliation','Separation','Recovery'],a:1,why:'M8: tension building → acute incident → honeymoon.'},
+  {q:'Trauma-informed care principles include:',o:['Safety, trustworthiness, choice, collaboration, empowerment','Speed and efficiency','Confrontation','Detailed incident recall'],a:0,why:'M8: trauma-informed principles.'},
+  {q:'Screening for IPV should be done:',o:['With the partner present','Privately, with a professional interpreter if needed','Only if bruises are visible','With the husband\'s consent'],a:1,why:'M8: private, safe screening.'},
+  {q:'Tertiary prevention of violence includes:',o:['School anti-bullying lessons','Treatment and rehabilitation of survivors','Media campaigns','Screening'],a:1,why:'M8: levels of prevention.'}],
+ reflection:['What did you feel during this scenario, and what helped you stay safe and effective?','How did culture (shame, migration) shape disclosure?']
+});
