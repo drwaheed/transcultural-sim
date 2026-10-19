@@ -26,10 +26,15 @@
 <script src="js/ui-fac.js"></script>
 <script src="js/ui-fac2.js"></script>
 <script src="js/ui-hub.js"></script>
+<script src="js/cloud-config.js"></script>
+<script src="js/vendor-supabase.js"></script>
+<script src="js/cloud.js"></script>
 <script>
-(function(){
+(async function(){
   try{
-    TCS.load(); TCS.applyTheme(); TCS_UI.shell(); TCS.render();
+    TCS.load(); TCS.applyTheme(); TCS_UI.shell();
+    if(window.TCS_CLOUD&&TCS_CLOUD.enabled) await TCS_CLOUD.init();
+    TCS.render();
     if(window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ if(TCS.db.settings.theme==='auto'){ TCS.applyTheme(); TCS_UI.shell(); TCS.render(); } });
   }catch(e){
     console.error(e);

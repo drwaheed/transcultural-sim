@@ -132,7 +132,7 @@ function applyTheme(){
 /* ---------- router ---------- */
 const routes={};
 function route(name, fn){ routes[name]=fn; }
-function go(hash){ if(location.hash==='#'+hash) render(); else location.hash=hash; }
+function go(hash){ if(location.hash==='#'+hash) window.TCS.render(); else location.hash=hash; }
 function render(){
   const h=(location.hash||'#home').slice(1); const [name,...args]=h.split('/');
   const fn=routes[name]||routes.home; const main=document.getElementById('main');
@@ -142,6 +142,6 @@ function render(){
     document.querySelectorAll('[data-nav]').forEach(a=>a.setAttribute('aria-current', a.dataset.nav===name?'page':'false'));
   });
 }
-window.addEventListener('hashchange', render);
+window.addEventListener('hashchange', ()=>window.TCS.render());
 window.TCS={KEY,DEFAULT_SETTINGS,load,save,get db(){return db;},set db(v){db=v;},blank,generateRoster,importRosterCSV,parseCSV,toCSV,download,seededShuffle,hash,uid,esc,L,lang,bi,fmtTime,fmtDate,num,mean,sd,scenarios,scenario,module,teamOf,team,prog,announce,toast,dialog,confirmDlg,pinDlg,isFac,applyTheme,route,go,render,pad};
 })();
