@@ -6,7 +6,13 @@ const T=window.TCS, CFG=window.TCS_CLOUD_CONFIG||{}, L=(a,e)=>T.L(a,e), esc=T.es
 const SYNC_KEY='tcs.cloud.sync';
 const C={ enabled:!!(CFG.SUPABASE_URL&&CFG.SUPABASE_ANON_KEY&&(window.supabase||CFG._client)), client:null, user:null, profile:null, status:'off', pending:0, lastSync:null, lastError:null, busy:false };
 window.TCS_CLOUD=C;
-const email=u=>String(u).trim().toLowerCase()+'@'+(CFG.EMAIL_DOMAIN||'nur416.local');
+/* Accepts "fac1", " FAC1 ", "fac 1", "fac1@nur416.local", "s1", "S01" → canonical username */
+const normUser=u=>{ let x=String(u||'').trim().toLowerCase().replace(/\s+/g,''); x=x.replace(/@.*$/,'');
+  let m=x.match(/^s(\d{1,2})$/); if(m) x='s'+m[1].padStart(2,'0');
+  m=x.match(/^(?:fac|facilitator|f)(\d)$/); if(m) x='fac'+m[1]; return x; };
+const email=u=>normUser(u)+'@'+(CFG.EMAIL_DOMAIN||'nur416.local');
+C.normUser=normUser;
+const isFacLink=()=>/^#?(facilitator|fac-login)\b/i.test(location.hash.slice(1))||/[?&]role=fac/i.test(location.search);
 const hashes=()=>{ try{ return JSON.parse(localStorage.getItem(SYNC_KEY)||'{}'); }catch(e){ return {}; } };
 const saveHashes=h=>localStorage.setItem(SYNC_KEY,JSON.stringify(h));
 C.isFacRole=()=>!!(C.profile&&C.profile.role==='facilitator');
@@ -102,20 +108,48 @@ if(C.enabled){
   T.render=function(){ const main=document.getElementById('main'); const h=(location.hash||'#home').slice(1).split('/')[0];
     if(CFG.REQUIRE_LOGIN!==false&&(!C.user||!C.profile)){ if(window.TCS_UI&&TCS_UI.beforeRoute) TCS_UI.beforeRoute('login'); loginView(main); return; }
     if(C.profile.must_change_password){ pwView(main,true); return; }
+    if(h==='facilitator'||h==='fac-login'){ location.replace('#'+(C.isFacRole()?'fac':'hub')); return; }
     if(h==='account'){ accountView(main); return; }
     render0.apply(T,arguments); const tools=document.querySelector('.appbar .tools'); if(tools&&!document.getElementById('cloudChip')) tools.insertAdjacentHTML('afterbegin',chip());
     if(h==='fac'&&C.isFacRole()&&Date.now()-lastPull>15000){ lastPull=Date.now(); C.sync({pull:true}).then(r=>{ if(r&&r.changed&&location.hash.startsWith('#fac')) render0.apply(T); }); } };
 }
 function loginView(main){
-  main.innerHTML='<div class="auth-wrap"><form class="card" id="lf" style="max-width:440px;margin:var(--s6) auto" novalidate><h1>'+L('تسجيل الدخول','Sign in')+'</h1><p class="small muted">'+L('استخدم اسم المستخدم وكلمة المرور اللذين تسلمتهما من الميسّر (مثل s01). لا تستخدم بريدك أو اسمك.','Use the username and password from your facilitator (e.g., s01). Do not use your e-mail or name.')+'</p>'+
-  '<label class="fld"><span>'+L('اسم المستخدم','Username')+'</span><input name="u" class="ltr mono" autocomplete="username" autocapitalize="none" spellcheck="false" required></label>'+
-  '<label class="fld"><span>'+L('كلمة المرور','Password')+'</span><input name="p" type="password" class="ltr" autocomplete="current-password" required></label>'+
-  '<div id="lErr" role="alert" class="err small"></div><button class="btn btn-primary btn-lg" style="width:100%">'+L('دخول','Sign in')+'</button>'+
-  '<p class="xs muted" style="margin-top:var(--s3)">'+L('نسيت كلمة المرور؟ يعيد الميسّر تعيينها من لوحة Supabase.','Forgot your password? The facilitator resets it in Supabase.')+'</p></form></div>';
+  let role=isFacLink()?'fac':(localStorage.getItem('tcs.loginRole')==='fac'?'fac':'stu');
+  const B=(ar,en)=>'<span lang="ar" dir="rtl">'+ar+'</span> <span class="muted">/</span> <span lang="en" dir="ltr">'+en+'</span>';
+  const draw=()=>{ const fac=role==='fac';
+  main.innerHTML='<div class="auth-wrap"><form class="card" id="lf" style="max-width:460px;margin:var(--s6) auto" novalidate data-role="'+role+'">'+
+  '<h1>'+(fac?L('دخول الميسّر','Facilitator sign-in'):L('تسجيل الدخول','Sign in'))+'</h1>'+
+  '<div class="tabs" role="tablist" aria-label="'+L('نوع الحساب','Account type')+'" style="margin-bottom:var(--s4)">'+
+   '<button type="button" role="tab" id="tabStu" aria-selected="'+!fac+'" tabindex="'+(fac?-1:0)+'">🎓 '+L('طالب','Student')+'</button>'+
+   '<button type="button" role="tab" id="tabFac" aria-selected="'+fac+'" tabindex="'+(fac?0:-1)+'">🧑‍🏫 '+L('ميسّر','Facilitator')+'</button></div>'+
+  '<p class="small muted" id="lHint">'+(fac?L('اكتب اسم مستخدم الميسّر (fac1 أو fac2) وكلمة المرور. ستفتح لوحة الميسّر مباشرة بعد الدخول — لا حاجة لرمز PIN.','Type your facilitator username (fac1 or fac2) and password. The Facilitator Console opens right after sign-in — no PIN needed.'):L('استخدم اسم المستخدم وكلمة المرور اللذين تسلمتهما من الميسّر (مثل s01).','Use the username and password from your facilitator (e.g., s01).'))+'</p>'+
+  '<label class="fld"><span>'+L('اسم المستخدم','Username')+'</span><input name="u" type="text" class="ltr mono" placeholder="'+(fac?'fac1':'s01')+'" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required aria-describedby="lHint lErr"></label>'+
+  '<label class="fld" for="lp"><span>'+L('كلمة المرور','Password')+'</span></label><div style="display:flex;gap:var(--s2);margin-top:-8px;margin-bottom:var(--s4)"><input id="lp" name="p" type="password" class="ltr" style="flex:1" autocomplete="current-password" required aria-describedby="lErr">'+
+   '<button type="button" class="btn btn-ghost" id="eye" aria-pressed="false" aria-controls="lp">'+L('إظهار','Show')+'</button></div>'+
+  '<div id="lErr" role="alert" aria-live="assertive" class="err small"></div><button type="submit" id="lGo" class="btn btn-primary btn-lg" style="width:100%">'+(fac?L('دخول إلى لوحة الميسّر','Sign in to Facilitator Console'):L('دخول','Sign in'))+'</button>'+
+  '<p class="xs muted" style="margin-top:var(--s3)">'+(fac?L('نسيت كلمة المرور؟ يعيد الميسّر الآخر تعيينها من لوحة الميسّر، أو من لوحة Supabase.','Forgot your password? The other facilitator can reset it in the console, or via Supabase.'):L('نسيت كلمة المرور؟ يعيد الميسّر تعيينها من لوحة الميسّر.','Forgot your password? Your facilitator can reset it from the Facilitator Console.'))+'</p>'+
+  '<p class="xs" style="margin-top:var(--s2)"><a href="'+(fac?'#home':'#facilitator')+'" id="swLink">'+(fac?L('أنا طالب ←','I am a student →'):L('هل أنت ميسّر؟ ادخل من هنا ←','Are you a facilitator? Sign in here →'))+'</a></p></form></div>';
   const f=main.querySelector('#lf'); f.u.focus();
-  f.onsubmit=async e=>{ e.preventDefault(); const err=main.querySelector('#lErr'); err.textContent=''; const b=f.querySelector('button'); b.disabled=true; b.textContent=L('جارٍ الدخول…','Signing in…');
-    try{ await C.login(f.u.value,f.p.value); window.TCS_UI.shell(); T.render(); C.sync({pull:true}).then(r=>{ if(r&&r.changed) T.render(); }); }
-    catch(x){ err.textContent=/Invalid login/i.test(x.message)?L('اسم المستخدم أو كلمة المرور غير صحيحة.','Incorrect username or password.'):(!navigator.onLine?L('لا يوجد اتصال بالإنترنت.','No internet connection.'):x.message); f.p.value=''; f.p.focus(); b.disabled=false; b.textContent=L('دخول','Sign in'); } }; }
+  const setRole=r=>{ const keep=[f.u.value,f.p.value]; role=r; localStorage.setItem('tcs.loginRole',r); draw(); const g=main.querySelector('#lf'); g.u.value=keep[0]; g.p.value=keep[1]; main.querySelector(r==='fac'?'#tabFac':'#tabStu').focus(); };
+  main.querySelector('#tabStu').onclick=()=>setRole('stu'); main.querySelector('#tabFac').onclick=()=>setRole('fac');
+  main.querySelector('[role=tablist]').onkeydown=e=>{ if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){ e.preventDefault(); setRole(role==='fac'?'stu':'fac'); } };
+  main.querySelector('#swLink').onclick=e=>{ e.preventDefault(); setRole(fac?'stu':'fac'); };
+  const eye=main.querySelector('#eye'); eye.onclick=()=>{ const show=f.p.type==='password'; f.p.type=show?'text':'password'; eye.setAttribute('aria-pressed',show); eye.textContent=show?L('إخفاء','Hide'):L('إظهار','Show'); f.p.focus(); };
+  f.onsubmit=async e=>{ e.preventDefault(); const err=main.querySelector('#lErr'); err.innerHTML=''; const b=main.querySelector('#lGo'), label=b.textContent;
+    const u=normUser(f.u.value); if(!u||!f.p.value){ err.innerHTML=B('اكتب اسم المستخدم وكلمة المرور.','Enter your username and password.'); (u?f.p:f.u).focus(); return; }
+    b.disabled=true; b.textContent=L('جارٍ الدخول…','Signing in…');
+    try{ const p=await C.login(u,f.p.value);
+      if(p.role==='facilitator'){ localStorage.setItem('tcs.loginRole','fac'); if(!location.hash.startsWith('#fac')||location.hash.startsWith('#facilitator')) history.replaceState(null,'',location.pathname+location.search+'#fac'); }
+      else { localStorage.setItem('tcs.loginRole','stu'); if(/^#(fac|facilitator)/.test(location.hash)) history.replaceState(null,'',location.pathname+location.search+'#hub');
+        if(fac) setTimeout(()=>T.toast(L('هذا حساب طالب، فُتحت صفحة الطالب.','This is a student account — opened the student area.')),300); }
+      window.TCS_UI.shell(); T.render(); C.sync({pull:true}).then(r=>{ if(r&&r.changed) T.render(); }); }
+    catch(x){ const m=String(x&&x.message||x);
+      err.innerHTML=/Invalid login|invalid_credentials/i.test(m)?B('اسم المستخدم أو كلمة المرور غير صحيحة. تأكّد من الأحرف الكبيرة والصغيرة في كلمة المرور.','Incorrect username or password. Passwords are case-sensitive.')
+        :/banned|disabled/i.test(m)?B('هذا الحساب موقوف. تواصل مع الميسّر.','This account is disabled. Contact the facilitator.')
+        :(!navigator.onLine||/fetch|network/i.test(m))?B('لا يوجد اتصال بالخادم. تحقق من الإنترنت وحاول مجدداً.','Cannot reach the server. Check your internet and try again.')
+        :esc(m);
+      f.p.value=''; f.p.focus(); b.disabled=false; b.textContent=label; } }; };
+  draw(); }
 function pwView(main,first){
   main.innerHTML='<form class="card" id="pf" style="max-width:480px;margin:var(--s6) auto"><h1>'+(first?L('غيّر كلمة المرور المؤقتة','Change your temporary password'):L('تغيير كلمة المرور','Change password'))+'</h1>'+(first?'<p class="small">'+L('هذا أول دخول لك. اختر كلمة مرور جديدة خاصة بك.','This is your first sign-in. Choose your own new password.')+'</p>':'')+
   '<label class="fld"><span>'+L('كلمة المرور الجديدة','New password')+'</span><input name="a" type="password" class="ltr" autocomplete="new-password" minlength="'+(CFG.MIN_PASSWORD||10)+'" required aria-describedby="pwH"></label><p id="pwH" class="xs muted">'+L('10 أحرف على الأقل، ويفضّل عبارة يسهل تذكرها.','At least 10 characters; a memorable passphrase is best.')+'</p>'+
