@@ -59,7 +59,7 @@ function hintRules(S){ const s=settings(); return isResearch(S)?{silence:s.silen
 const Orchestrator={
   create({team, cycle, scenarioId, mode, members, roles}){
     const sc=T.scenario(scenarioId), s=settings();
-    const S={id:T.uid('ses'), team, cycle:+cycle, scenario:scenarioId, mode:mode||'research', engine:s.engine==='llm'&&s.apiKey?'llm':'offline', model:s.engine==='llm'&&s.apiKey?s.model:'offline-rules-v1', device:T.db.meta.device,
+    const S={id:T.uid('ses'), team, cycle:+cycle, scenario:scenarioId, mode:mode||'research', engine:(s.engine==='llm'&&s.apiKey)||LLM.proxy()?'llm':'offline', model:LLM.proxy()?'proxy:'+((window.TCS_CON&&TCS_CON.env().llm.model)||'llm'):(s.engine==='llm'&&s.apiKey?s.model:'offline-rules-v1'), device:T.db.meta.device,
       members:members.slice(), roles:{...roles}, status:'prebrief', createdAt:new Date().toISOString(), startedAt:null, endedAt:null, pausedMs:0, pausedAt:null,
       trust:sc.trustStart||4, trustCurve:[], flags:{}, revealed:[], nearMiss:{}, dps:{}, dpPending:null, hintsUsed:0, lastStudentAt:null, turns:0, topicUse:{}, log:[], guard:[], adaptive:{easier:0,challenge:false}, debrief:null, measure:null, sbar:null, notes:''};
     S.trustCurve.push({t:0,v:S.trust,turn:0,reason:'start'});
@@ -250,8 +250,13 @@ const Guard={
 };
 /* ------------------------------ LLM client (OpenAI-compatible) ------------------------------ */
 const LLM={
-  ready(){ const s=settings(); return s.engine==='llm'&&!!s.apiKey&&!!s.endpoint&&!!s.model; },
+  proxy(){ const P=window.TCS_CLOUD&&window.TCS_CLOUD.llmProxy&&window.TCS_CLOUD.llmProxy(); return P||null; },
+  ready(){ const s=settings(); if(LLM.proxy()) return true; return s.engine==='llm'&&!!s.apiKey&&!!s.endpoint&&!!s.model; },
   async chat(messages, opt){
+    opt=opt||{}; const P=LLM.proxy();
+    if(P){ const r=await fetch(P.url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+P.token,'apikey':P.anon},body:JSON.stringify({messages,temperature:opt.temperature??P.temperature,max_tokens:opt.maxTokens||300,...(opt.json?{response_format:{type:'json_object'}}:{})})});
+      if(!r.ok){ const b=await r.text(); throw new Error('HTTP '+r.status+' '+b.slice(0,160)); }
+      const j=await r.json(); const c=j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content; if(!c) throw new Error('Empty response'); if(j.model) LLM.lastModel=j.model; return c; }
     const s=settings(); const url=s.endpoint.replace(/\/+$/,'')+'/chat/completions';
     const ctrl=new AbortController(); const to=setTimeout(()=>ctrl.abort(),opt.timeout||25000);
     try{

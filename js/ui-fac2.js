@@ -91,7 +91,7 @@ F.cohortRows=consentedOnly=>{
   T.db.obs.filter(o=>!o.sessionId&&o.observer==='A').forEach(o=>{ const st=R.students.find(x=>x.code===o.student); const consent=st?st.consent!==false:true; if(consentedOnly&&!consent) return; const s=E.Tool2.score(o.items); const r=new Array(head.length).fill(''); r[0]=o.student; r[1]=o.team||T.teamOf(o.student)||''; r[2]=consent?1:0; r[3]=0; r[4]='T0'; r[11]=T.fmtDate(o.ts); ['E','I','D','N','posComposite','B','C','Em','added'].forEach((k,i)=>r[38+i]=s[k]==null?'':+s[k].toFixed(3)); r[47]=1; rows.push(r); });
   return rows; };
 function merge(inc){ const st={sessions:0,obs:0,progress:0,custom:0}; const db=T.db;
-  (inc.sessions||[]).forEach(s=>{ const i=db.sessions.findIndex(x=>x.id===s.id); if(i<0){ db.sessions.push(s); st.sessions++; } else if((s.log||[]).length>(db.sessions[i].log||[]).length){ db.sessions[i]=s; st.sessions++; } });
+  (inc.sessions||[]).forEach(s=>{ const i=db.sessions.findIndex(x=>x.id===s.id); if(i<0){ db.sessions.push(s); st.sessions++; } else if((s.log||[]).length>(db.sessions[i].log||[]).length||((s.log||[]).length===(db.sessions[i].log||[]).length&&(s.upd||0)>(db.sessions[i].upd||0))){ db.sessions[i]=s; st.sessions++; } });
   (inc.obs||[]).forEach(o=>{ const i=db.obs.findIndex(x=>x.id===o.id); if(i<0){ db.obs.push(o); st.obs++; } else if((o.ts||'')>(db.obs[i].ts||'')){ db.obs[i]=o; st.obs++; } });
   Object.entries(inc.progress||{}).forEach(([code,p])=>{ const m=T.prog(code); st.progress++;
     Object.entries(p.modules||{}).forEach(([k,v])=>{ const a=m.modules[k]||{seen:[]}; m.modules[k]={seen:[...new Set([...(a.seen||[]),...(v.seen||[])])].sort((x,y)=>x-y),done:a.done||v.done,at:v.at>a.at?v.at:a.at}; });

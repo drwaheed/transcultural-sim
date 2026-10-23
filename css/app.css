@@ -235,7 +235,15 @@ dialog::backdrop{background:rgba(5,20,22,.55)}
 .md h1{font-size:var(--fs-xl)}.md h2{font-size:var(--fs-lg);margin-top:var(--s5)}.md h3{font-size:var(--fs-md);margin-top:var(--s4)}.md ul,.md ol{padding-inline-start:1.4em}.md code{font-family:var(--mono);background:var(--surface-2);padding:1px 5px;border-radius:4px;font-size:.9em}.md table{border-collapse:collapse;margin:var(--s3) 0}.md td,.md th{border:1px solid var(--border);padding:6px 10px}
 .bar{height:8px;background:var(--surface-3);border-radius:var(--pill);overflow:hidden;min-width:60px}.bar>i{display:block;height:100%;background:var(--primary)}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
-@media print{.appbar,.foot,.no-print,#toasts{display:none!important}main{max-width:none;padding:0}.card{box-shadow:none;break-inside:avoid}}
+@media print{.appbar,.foot,.no-print,#toasts,.tabs,.ann-bar{display:none!important}main{max-width:none;padding:0}.card{box-shadow:none;break-inside:avoid;border:1px solid #999}.print-only{display:block!important}body{background:#fff;color:#000}a{color:#000;text-decoration:none}.tbl-wrap{overflow:visible!important;max-height:none!important}@page{margin:14mm}}
+.print-only{display:none}
+.kpi-alert{border-color:var(--danger,#b42318)!important}
+.feed{list-style:none;padding:0;margin:0;max-height:340px;overflow:auto}.feed li{padding:6px 0;border-bottom:1px solid var(--line,#ddd)}
+.plain-list{list-style:none;padding:0;margin:0}
+.switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;min-height:32px}.switch.block{display:flex}.switch input{width:20px;height:20px;accent-color:var(--primary)}
+.ann-bar{margin:0 0 var(--s4)}.ann-bar .alert{margin:6px 0}
+.lockcard{opacity:.75}
+blockquote{margin:8px 0;padding:8px 12px;border-inline-start:3px solid var(--primary);background:var(--surface-2,rgba(0,0,0,.03))}
 @media (forced-colors:active){.btn,.card,.choice{border:1px solid CanvasText}}
 /* ---- additions: hub, modules, search ---- */
 .linkcard{text-decoration:none;color:inherit;transition:box-shadow .15s,transform .15s}
@@ -253,3 +261,4 @@ dialog::backdrop{background:rgba(5,20,22,.55)}
 html{scroll-padding-top:84px}
 .msg.me .av{color:var(--on-primary)}
 .tbl-wrap:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.feed:focus-visible{outline:3px solid var(--focus,#1a73e8);outline-offset:2px}

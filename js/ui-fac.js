@@ -2,20 +2,20 @@
 (function(){
 'use strict';
 const T=window.TCS, E=window.TCS_ENGINE, C=window.TCS_CHARTS, U=window.TCS_UI, L=(a,e)=>T.L(a,e), esc=T.esc;
-const TABS=[['live','🟢',['مباشر','Live']],['cohort','👥',['الدفعة','Cohort']],['roster','🗂️',['القائمة والفرق','Roster & teams']],['obs','📝',['الملاحظة (الأداة 2)','Observation (Tool 2)']],['analytics','📊',['التحليلات','Analytics']],['builder','🧩',['منشئ السيناريو','Scenario builder']],['data','💾',['البيانات والتصدير','Data & export']],['settings','⚙️',['الإعدادات','Settings']]];
+const TABS=[['overview','🏠',['نظرة عامة','Overview']],['students','🎓',['الطلبة','Students']],['teams','👥',['الفرق','Teams']],['live','🟢',['مباشر','Live']],['control','🎛️',['التحكم بالبيئة','Environment']],['assess','🧪',['التقييم','Assessment']],['reports','📑',['التقارير','Reports']],['audit','🛡️',['سجل التدقيق','Audit log']],['cohort','🗺️',['خريطة الدفعة','Cohort map']],['roster','🗂️',['القائمة والفرق','Roster & teams']],['obs','📝',['الملاحظة (الأداة 2)','Observation (Tool 2)']],['analytics','📊',['التحليلات','Analytics']],['builder','🧩',['منشئ السيناريو','Scenario builder']],['data','💾',['البيانات والتصدير','Data & export']],['settings','⚙️',['الإعدادات','Settings']]];
 const FAC={};
-window.TCS_FAC=FAC;
+window.TCS_FAC=FAC; FAC.TABS=TABS;
 function statusBadge(st){ const m={prebrief:['info',L('تهيئة','prebrief')],running:['ok',L('جارية','running')],paused:['warn',L('متوقفة مؤقتاً','paused')],debrief:['pri',L('اختتام','closing')],measure:['pri',L('قياس','measuring')],extras:['pri',L('ما بعد الجلسة','post-session')],done:['ok',L('مكتملة','complete')],stopped:['danger',L('أوقفت','stopped')]}; const x=m[st]||['',st]; return '<span class="badge '+x[0]+'">'+esc(x[1])+'</span>'; }
 FAC.statusBadge=statusBadge;
 T.route('fac', async (main,tab,arg)=>{
   if(!T.isFac()){
-    main.innerHTML='<h1>'+L('لوحة الميسّر','Facilitator dashboard')+'</h1><div class="card" style="max-width:520px"><p>'+L('هذه المنطقة للميسّر فقط. أدخل رمز PIN.','This area is for the facilitator only. Enter the PIN.')+'</p><button class="btn btn-primary" id="pinBtn">🔒 '+L('دخول','Sign in')+'</button></div>';
-    main.querySelector('#pinBtn').onclick=async()=>{ if(await T.pinDlg()) T.render(); }; return;
+    main.innerHTML='<h1>'+L('لوحة الميسّر','Facilitator dashboard')+'</h1><div class="card" style="max-width:520px"><p>'+(window.TCS_CLOUD&&TCS_CLOUD.enabled&&TCS_CLOUD.profile?L('هذه المنطقة متاحة لحسابات الميسّرين فقط. حسابك لا يملك هذا الدور.','This area is available to facilitator accounts only. Your account does not have this role.')+'</p></div>':L('هذه المنطقة للميسّر فقط. أدخل رمز PIN.','This area is for the facilitator only. Enter the PIN.')+'</p><button class="btn btn-primary" id="pinBtn">🔒 '+L('دخول','Sign in')+'</button></div>');
+    if(main.querySelector('#pinBtn')) main.querySelector('#pinBtn').onclick=async()=>{ if(await T.pinDlg()) T.render(); }; return;
   }
-  tab=tab||'live';
-  main.innerHTML='<div class="row"><h1 style="margin:0">'+L('لوحة الميسّر','Facilitator dashboard')+'</h1><span class="spacer"></span><button class="btn btn-sm btn-ghost" id="lock">🔒 '+L('قفل','Lock')+'</button></div>'+
+  tab=tab||'overview'; const cloudRole=!!(window.TCS_CLOUD&&TCS_CLOUD.enabled&&TCS_CLOUD.profile);
+  main.innerHTML='<div class="row"><h1 style="margin:0">'+L('منصة الميسّر','Facilitator Console')+'</h1><span class="spacer"></span>'+(cloudRole?'<span class="badge ok">👤 '+esc(TCS_CLOUD.profile.username)+' · '+L('ميسّر','facilitator')+'</span>':'<button class="btn btn-sm btn-ghost" id="lock">🔒 '+L('قفل','Lock')+'</button>')+'</div>'+
    '<div class="tabs" role="tablist" aria-label="'+L('أقسام اللوحة','Dashboard sections')+'" style="margin-top:var(--s3)">'+TABS.map(t=>'<button role="tab" id="tab-'+t[0]+'" aria-selected="'+(t[0]===tab)+'" aria-controls="panel" tabindex="'+(t[0]===tab?0:-1)+'" data-t="'+t[0]+'">'+t[1]+' '+(T.lang()==='ar'?t[2][0]:t[2][1])+'</button>').join('')+'</div><div id="panel" role="tabpanel" aria-labelledby="tab-'+tab+'" tabindex="0"><h2 class="sr-only">'+(TABS.find(t=>t[0]===tab)||TABS[0])[2][T.lang()==='ar'?0:1]+'</h2><div id="pbody"></div></div>';
-  main.querySelector('#lock').onclick=()=>{ sessionStorage.removeItem('tcs.fac'); T.go('home'); };
+  if(main.querySelector('#lock')) main.querySelector('#lock').onclick=()=>{ sessionStorage.removeItem('tcs.fac'); T.go('home'); };
   const tl=main.querySelector('[role=tablist]');
   tl.addEventListener('click',e=>{ const b=e.target.closest('[role=tab]'); if(b) T.go('fac/'+b.dataset.t); });
   tl.addEventListener('keydown',e=>{ const tabs=[...tl.querySelectorAll('[role=tab]')]; const i=tabs.indexOf(document.activeElement); if(i<0) return; let j=null; const rtl=document.dir==='rtl';

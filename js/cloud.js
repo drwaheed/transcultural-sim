@@ -82,7 +82,7 @@ C.pull=async()=>{ const fac=C.isFacRole(), p=C.profile; const inc={sessions:[],o
   const before=JSON.stringify([T.db.sessions.length,T.db.obs.length]);
   const st=window.TCS_FAC&&window.TCS_FAC.merge?window.TCS_FAC.merge(inc):null;
   // mark pulled content as already synced so it is not pushed back unchanged
-  const h=hashes(); T.db.sessions.forEach(S=>{ if(inc.sessions.some(x=>x.id===S.id&&x.log.length===S.log.length)) h['s:'+S.id]=T.hash(JSON.stringify(S)); }); saveHashes(h);
+  const h=hashes(); T.db.sessions.forEach(S=>{ if(inc.sessions.some(x=>x.id===S.id&&x.log.length===S.log.length&&(x.upd||0)===(S.upd||0))) h['s:'+S.id]=T.hash(JSON.stringify(S)); }); saveHashes(h);
   T.save(true); return {changed:before!==JSON.stringify([T.db.sessions.length,T.db.obs.length]),st}; };
 function setStatus(s,err){ C.status=s; C.lastError=err||null; C.pending=C.user&&C.profile?C.queue().length:0; const el=document.getElementById('cloudChip'); if(el) el.outerHTML=chip(); }
 C.sync=async(opts)=>{ if(!C.enabled||!C.user||!C.profile||C.busy) return; if(!navigator.onLine){ setStatus('offline'); return; }
@@ -96,7 +96,7 @@ C.chip=chip;
 /* ---------- integrate with core: save → schedule sync; facilitator by role; login gate ---------- */
 if(C.enabled){
   const save0=T.save; let t=null; T.save=function(now){ save0.apply(T,arguments); clearTimeout(t); t=setTimeout(()=>C.sync(),now?800:3000); };
-  const isFac0=T.isFac; T.isFac=()=>C.profile?C.isFacRole()&&isFac0():isFac0();
+  const isFac0=T.isFac; T.isFac=()=>C.profile?C.isFacRole():isFac0(); // role-based: no PIN when signed in
   const pin0=T.pinDlg; T.pinDlg=async()=>{ if(C.profile&&!C.isFacRole()){ T.toast(L('هذه المنطقة للميسّرين فقط.','Facilitators only.'),'danger'); return false; } if(C.isFacRole()){ sessionStorage.setItem('tcs.fac','1'); return true; } return pin0(); };
   const render0=T.render; let lastPull=0;
   T.render=function(){ const main=document.getElementById('main'); const h=(location.hash||'#home').slice(1).split('/')[0];

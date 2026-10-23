@@ -124,7 +124,8 @@ create policy ext_fac on public.external_measures for all using (public.is_facil
 -- learning data: the student's own rows, facilitators read all
 create policy mp_own on public.module_progress for all using (student_code = public.my_code() or public.is_facilitator()) with check (student_code = public.my_code() or public.is_facilitator());
 create policy qr_own on public.quiz_results for all using (student_code = public.my_code() or public.is_facilitator()) with check (student_code = public.my_code() or public.is_facilitator());
-create policy rf_own on public.reflections for all using (student_code = public.my_code() or public.is_facilitator()) with check (student_code = public.my_code() or public.is_facilitator());
+create policy rf_own on public.reflections for all using (student_code = public.my_code()) with check (student_code = public.my_code());
+-- facilitator read access to reflections is consent-filtered: see schema-v2-console.sql (rf_fac_consented)
 create policy rv_own on public.review_state for all using (student_code = public.my_code() or public.is_facilitator()) with check (student_code = public.my_code() or public.is_facilitator());
 
 -- privileges (anon gets nothing; everything requires login)
