@@ -43,11 +43,11 @@ C.changePassword=async(pw)=>{ if(String(pw).length<(CFG.MIN_PASSWORD||10)) throw
   const r=await C.client.rpc('mark_password_changed'); if(r.error) throw r.error; C.profile.must_change_password=false; };
 /* ---------- push (offline queue = items whose content hash differs from the last successful push) ---------- */
 function collect(){ const db=T.db, p=C.profile, fac=C.isFacRole(), out=[];
-  db.sessions.forEach(S=>{ if(!fac&&S.team!==p.team_code) return; if(S.status==='prebrief'&&!S.log.length) return;
+  db.sessions.forEach(S=>{ if(!fac&&S.team!==p.team_code) return; if(S.status==='prebrief'&&!(S.log||[]).length) return;
     out.push({k:'s:'+S.id,h:T.hash(JSON.stringify(S)),run:async()=>{
       const row={id:S.id,team_code:S.team,cycle:S.cycle,scenario:S.scenario,mode:S.mode,engine:S.engine,model:S.model||null,status:S.status,device:S.device||null,members:S.members,data:S,updated_at:new Date().toISOString()};
       let r=await C.client.from('sessions').upsert(row); if(r.error) throw r.error;
-      const logs=S.log.map(e=>({session_id:S.id,i:e.i,t_ms:Math.round(e.t||0),kind:e.kind,who:e.who||null,to_whom:e.to||null,text:e.text||'',codes:e.codes||[],trust:e.trust??null}));
+      const logs=(S.log||[]).map(e=>({session_id:S.id,i:e.i,t_ms:Math.round(e.t||0),kind:e.kind,who:e.who||null,to_whom:e.to||null,text:e.text||'',codes:e.codes||[],trust:e.trust??null}));
       for(let i=0;i<logs.length;i+=500){ r=await C.client.from('logs').upsert(logs.slice(i,i+500)); if(r.error) throw r.error; }
       const dps=Object.entries(S.dps||{}).filter(([k,d])=>d.answer).map(([k,d])=>({session_id:S.id,dp:k,opt:d.answer.opt,leininger:d.answer.lein||null,quality:d.answer.q??null,recorded_by:d.answer.by||null,justification:d.answer.just||'',words:d.answer.words||0,revisions:(d.revisions||[]).length,updated_at:new Date().toISOString()}));
       if(dps.length){ r=await C.client.from('decisions').upsert(dps); if(r.error) throw r.error; } }}); });
@@ -64,7 +64,8 @@ function collect(){ const db=T.db, p=C.profile, fac=C.isFacRole(), out=[];
   return out; }
 C.queue=()=>{ if(!C.user||!C.profile) return []; const h=hashes(); return collect().filter(it=>h[it.k]!==it.h); };
 C.push=async()=>{ const h=hashes(); const q=C.queue(); let done=0;
-  for(const it of q){ await it.run(); h[it.k]=it.h; saveHashes(h); done++; }
+  let firstErr=null; for(const it of q){ try{ await it.run(); h[it.k]=it.h; saveHashes(h); done++; }catch(e){ console.warn('sync item failed',it.k,e&&e.message); firstErr=firstErr||e; } }
+  if(firstErr&&!done) throw firstErr;
   if(q.some(it=>it.k.startsWith('x:'))) T.save(true);
   return done; };
 /* ---------- pull (facilitator: whole cohort; student: own team + own learning data) ---------- */

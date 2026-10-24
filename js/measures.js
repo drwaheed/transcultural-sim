@@ -135,7 +135,7 @@ T.route('survey',(main,tp,sid)=>surveyView(main,tp,sid));
 const render0=T.render;
 T.render=function(){ document.querySelectorAll('.fac-obs-fab').forEach(x=>x.remove()); const main=document.getElementById('main'); const h=(location.hash||'#home').slice(1).split('/')[0];
   if(document.querySelector('#lf,#pf')||!main){ return render0.apply(T,arguments); }
-  const C0=CL(); if(T.isFac()&&(!C0||!C0.enabled||C0.profile)){ const r=render0.apply(T,arguments); fab(h); return r; }
+  const C0=CL(); if(T.isFac()&&(!C0||!C0.enabled||C0.profile)){ applyConsent(); const r=render0.apply(T,arguments); fab(h); return r; }
   const C=CL(); const signed=C&&C.enabled?!!(C.profile&&!C.profile.must_change_password):true;
   if(!signed||!isStudent()) return render0.apply(T,arguments);
   if(st.loadedFor!==myCode()){ main.innerHTML='<p class="muted" role="status">'+L('جارٍ التحميل…','Loading…')+'</p>'; loadMine().catch(e=>{ console.warn('measures',e); st.loadedFor=myCode(); st.consent=st.consent||null; }).then(()=>T.render()); return; }
@@ -152,14 +152,17 @@ function fab(h){ document.querySelectorAll('.fac-obs-fab').forEach(x=>x.remove()
 const fx={surveys:[],consents:[]}; M.fac=fx;
 function mergeScores(){ T.db.external=T.db.external.filter(x=>!x.autoSeq); fx.surveys.filter(r=>r.completed).forEach(r=>{ const sc=seqScore(r.items); [['Tool1 SEQ mean',sc.mean],['Tool1 SEQ capabilities',sc.cap],['Tool1 SEQ environment',sc.env]].forEach(([m,v])=>{ if(v!=null) T.db.external.push({student:r.student_code,timepoint:r.timepoint,measure:m,value:+v.toFixed(3),synced:true,autoSeq:true}); }); }); }
 if(K&&K.load){ const load0=K.load; K.load=async function(){ const r=await load0.apply(K,arguments);
-  try{ if(cloud()&&CL().isFacRole()){ const sb=CL().client; const a=await sb.from('survey_responses').select('*'); const b=await sb.from('consents').select('*').order('at',{ascending:false}); if(!a.error) fx.surveys=a.data; if(!b.error) fx.consents=b.data; mergeScores(); } }catch(e){ console.warn('measures load',e); }
+  try{ if(cloud()&&CL().isFacRole()){ const sb=CL().client; const a=await sb.from('survey_responses').select('*'); const b=await sb.from('consents').select('*').order('at',{ascending:false}); if(!a.error) fx.surveys=a.data; fx.consents=b.error?[]:b.data; fx.ready=true; mergeScores(); applyConsent(); } }catch(e){ console.warn('measures load',e); }
   return r; }; }
+/* explicit-consent policy: only students whose latest recorded decision is 'agree' count as consented (undecided = excluded) */
+function applyConsent(){ if(!fx.ready) return; (T.db.roster.students||[]).forEach(x=>{ const c=latestConsent(x.code); x.consent=!!(c&&c.decision==='agree'); x.consentState=c?c.decision:'undecided'; }); }
+M.applyConsent=applyConsent;
 const latestConsent=code=>fx.consents.find(c=>c.student_code===code);
 M.facPanel=()=>{ const R=T.db.roster, n=R.students.length; const ag=R.students.filter(s=>{ const c=latestConsent(s.code); return c&&c.decision==='agree'; }).length, de=R.students.filter(s=>{ const c=latestConsent(s.code); return c&&c.decision==='decline'; }).length;
   const cnt=tp=>fx.surveys.filter(r=>r.timepoint===tp&&r.completed).length, dr=tp=>fx.surveys.filter(r=>r.timepoint===tp&&!r.completed).length;
   return '<section class="card" style="margin-top:var(--s4)" id="seqPanel"><h3>📋 '+L('الموافقة والأداة 1 داخل المنصة (SEQ)','Consent & in-app Tool 1 (SEQ)')+'</h3><div class="grid g4">'+
    [[ag+'/'+n,L('وافقوا','agreed')],[de,L('رفضوا','declined')],[n-ag-de,L('لم يقرروا بعد','not decided')]].map(k=>'<div class="card pad-sm kpi"><b>'+k[0]+'</b><span>'+k[1]+'</span></div>').join('')+'<div class="card pad-sm kpi"><b>'+['T0','T1','T2'].map(cnt).join(' · ')+'</b><span>'+L('أُرسلت T0 · T1 · T2','submitted T0 · T1 · T2')+' ('+L('مسودات ','drafts ')+['T0','T1','T2'].map(dr).join('/')+')</span></div></div>'+
-   '<p class="xs muted">'+L('متوسطات SEQ (1–5) تظهر تلقائياً في جدول مقارنات T0/T1/T2 أدناه وفي التصدير.','SEQ means (1–5) appear automatically in the T0/T1/T2 comparison table below and in the exports.')+'</p><div class="btn-row"><button class="btn btn-secondary" id="seqX">⬇ '+L('تصدير إجابات الأداة 1 (بنود)','Export Tool 1 responses (item level)')+'</button><button class="btn btn-secondary" id="conX">⬇ '+L('تصدير سجل الموافقات','Export consent log')+'</button></div></section>'; };
+   '<p class="xs muted">'+L('تشمل الصادرات البحثية فقط من كان آخر قرار له «موافق»؛ ويُستبعد غير المقررين حتى يوافقوا. متوسطات SEQ (1–5) تظهر تلقائياً في جدول مقارنات T0/T1/T2 أدناه وفي التصدير.','Research exports include only students whose latest decision is “agree”; undecided students are excluded until they agree. SEQ means (1–5) appear automatically in the T0/T1/T2 comparison table below and in the exports.')+'</p><div class="btn-row"><button class="btn btn-secondary" id="seqX">⬇ '+L('تصدير إجابات الأداة 1 (بنود)','Export Tool 1 responses (item level)')+'</button><button class="btn btn-secondary" id="conX">⬇ '+L('تصدير سجل الموافقات','Export consent log')+'</button></div></section>'; };
 M.facWire=panel=>{ const day=new Date().toISOString().slice(0,10); const x=panel.querySelector('#seqX'); if(!x) return;
   x.onclick=()=>{ const head=['student_code','team_code','consent','timepoint','completed','submitted_at','n_answered','seq_mean','capabilities','environment',...SEQ_SCALES.map(s=>'sub_'+s[0]),...SEQ.map(i=>'q'+i.n)];
     const rows=fx.surveys.map(r=>{ const sc=seqScore(r.items), c=latestConsent(r.student_code); const f=v=>v==null?'':+v.toFixed(3); return [r.student_code,T.teamOf(r.student_code)||'',c?c.decision:'',r.timepoint,r.completed?1:0,r.submitted_at||'',r.n_answered,f(sc.mean),f(sc.cap),f(sc.env),...SEQ_SCALES.map(s=>f(sc.sub[s[0]])),...SEQ.map(i=>(r.items||{})[i.n]??'')]; });

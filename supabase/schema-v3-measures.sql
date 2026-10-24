@@ -48,3 +48,6 @@ revoke all on function public.record_consent(text,boolean,text) from public;
 grant execute on function public.record_consent(text,boolean,text) to authenticated;
 grant select, insert on public.consents to authenticated; grant usage on sequence public.consents_id_seq to authenticated;
 grant select, insert, update on public.survey_responses to authenticated;
+
+-- v3.1 explicit consent: new accounts start as not consented until they agree in-app
+alter table public.profiles alter column consent set default false;
