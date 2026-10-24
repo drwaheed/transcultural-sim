@@ -10,7 +10,7 @@
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b6b63'/%3E%3Cpath d='M13 7h6v6h6v6h-6v6h-6v-6H7v-6h6z' fill='white'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/app.css">
 </head>
-<body>
+<body class="gated">
 <div id="app"><main id="main"><p style="padding:2rem">جارٍ التحميل… / Loading…</p></main></div>
 <noscript><p style="padding:2rem">يتطلب هذا التطبيق تفعيل JavaScript. / This app requires JavaScript.</p></noscript>
 <script src="js/core.js"></script>
@@ -35,6 +35,7 @@
 (async function(){
   try{
     TCS.load(); TCS.applyTheme(); TCS_UI.shell();
+    const CF=window.TCS_CLOUD_CONFIG||{}; if(CF.SUPABASE_URL&&CF.REQUIRE_LOGIN!==false&&!(window.TCS_CLOUD&&TCS_CLOUD.enabled)){ document.getElementById('app').innerHTML='<main id="main" style="padding:2rem;max-width:560px;margin:auto"><h1>تعذّر تحميل خدمة الدخول / Sign-in service unavailable</h1><p>لا يمكن فتح المنصة دون تسجيل الدخول. تحقق من الاتصال ثم حدّث الصفحة. / The platform cannot open without signing in. Check your connection and reload.</p><button class="btn btn-primary" onclick="location.reload()">↻ Reload</button></main>'; return; }
     if(window.TCS_CLOUD&&TCS_CLOUD.enabled) await TCS_CLOUD.init();
     TCS.render();
     if(window.matchMedia) matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ if(TCS.db.settings.theme==='auto'){ TCS.applyTheme(); TCS_UI.shell(); TCS.render(); } });

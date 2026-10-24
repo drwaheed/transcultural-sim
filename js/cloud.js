@@ -15,22 +15,24 @@ C.normUser=normUser;
 const isFacLink=()=>/^#?(facilitator|fac-login)\b/i.test(location.hash.slice(1))||/[?&]role=fac/i.test(location.search);
 const hashes=()=>{ try{ return JSON.parse(localStorage.getItem(SYNC_KEY)||'{}'); }catch(e){ return {}; } };
 const saveHashes=h=>localStorage.setItem(SYNC_KEY,JSON.stringify(h));
-C.isFacRole=()=>!!(C.profile&&C.profile.role==='facilitator');
+C.isFacRole=()=>!!(C.profile&&C.profile.role==='facilitator'&&C.facVerified===true); // role read via RLS + confirmed by server RPC is_facilitator()
 /* ---------- auth ---------- */
 C.init=async()=>{
   if(!C.enabled) return;
   C.client=CFG._client||window.supabase.createClient(CFG.SUPABASE_URL,CFG.SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'tcs.cloud.auth'}});
   try{ const {data}=await C.client.auth.getSession(); if(data&&data.session){ C.user=data.session.user; await loadProfile(); } }catch(e){ C.lastError=e.message; }
-  C.client.auth.onAuthStateChange((ev,session)=>{ C.user=session?session.user:null; if(!session){ C.profile=null; } });
+  C.client.auth.onAuthStateChange((ev,session)=>{ const had=!!C.profile; C.user=session?session.user:null; if(!session){ C.profile=null; C.facVerified=false; sessionStorage.removeItem('tcs.fac'); sessionStorage.removeItem('tcs.stu'); if(had){ setTimeout(()=>{ T.render(); T.toast&&T.toast(L('انتهت الجلسة — سجّل الدخول مجدداً.','Session ended — please sign in again.'),'info'); },0); } } });
   addEventListener('online',()=>C.sync()); addEventListener('offline',()=>setStatus('offline'));
   setInterval(()=>{ if(C.user&&C.profile&&!C.profile.must_change_password) C.sync(); },(CFG.SYNC_INTERVAL_SEC||20)*1000);
 };
 async function loadProfile(){
   const {data,error}=await C.client.from('profiles').select('*').eq('user_id',C.user.id).maybeSingle();
-  if(error) throw error; C.profile=data||null; applyRole();
+  if(error) throw error; C.profile=data||null; C.facVerified=false;
+  if(C.profile&&C.profile.role==='facilitator'){ const r=await C.client.rpc('is_facilitator'); C.facVerified=!r.error&&r.data===true; }
+  applyRole();
 }
 function applyRole(){ const p=C.profile; if(!p) return;
-  if(p.role==='facilitator') sessionStorage.setItem('tcs.fac','1'); else sessionStorage.removeItem('tcs.fac');
+  if(C.isFacRole()) sessionStorage.setItem('tcs.fac','1'); else sessionStorage.removeItem('tcs.fac');
   if(p.student_code) sessionStorage.setItem('tcs.stu',p.student_code);
   if(p.team_code) sessionStorage.setItem('tcs.lastTeam',p.team_code); }
 C.login=async(username,password)=>{
@@ -104,14 +106,17 @@ C.chip=chip;
 if(C.enabled){
   const save0=T.save; let t=null; T.save=function(now){ save0.apply(T,arguments); clearTimeout(t); t=setTimeout(()=>C.sync(),now?800:3000); };
   const isFac0=T.isFac; T.isFac=()=>C.profile?C.isFacRole():isFac0(); // role-based: no PIN when signed in
-  const pin0=T.pinDlg; T.pinDlg=async()=>{ if(C.profile&&!C.isFacRole()){ T.toast(L('هذه المنطقة للميسّرين فقط.','Facilitators only.'),'danger'); return false; } if(C.isFacRole()){ sessionStorage.setItem('tcs.fac','1'); return true; } return pin0(); };
+  T.pinDlg=async()=>{ if(C.isFacRole()){ sessionStorage.setItem('tcs.fac','1'); return true; } T.toast(L('هذه المنطقة للميسّرين فقط — سجّل الدخول بحساب ميسّر.','Facilitators only — sign in with a facilitator account.'),'danger'); return false; }; // no PIN fallback on the cloud site
   const render0=T.render; let lastPull=0;
   T.render=function(){ const main=document.getElementById('main'); const h=(location.hash||'#home').slice(1).split('/')[0];
-    if(CFG.REQUIRE_LOGIN!==false&&(!C.user||!C.profile)){ if(window.TCS_UI&&TCS_UI.beforeRoute) TCS_UI.beforeRoute('login'); loginView(main); return; }
+    const gated=CFG.REQUIRE_LOGIN!==false&&(!C.user||!C.profile); document.body.classList.toggle('gated',gated||!!(C.profile&&C.profile.must_change_password));
+    if(gated){ if(window.TCS_UI&&TCS_UI.beforeRoute) TCS_UI.beforeRoute('login'); loginView(main); return; }
     if(C.profile.must_change_password){ pwView(main,true); return; }
     if(h==='facilitator'||h==='fac-login'){ location.replace('#'+(C.isFacRole()?'fac':'hub')); return; }
     if(h==='account'){ accountView(main); return; }
+    if(h==='fac'&&!C.isFacRole()){ location.replace('#hub'); setTimeout(()=>T.toast(L('لوحة الميسّر متاحة لحسابات الميسّرين فقط.','The Facilitator Console is for facilitator accounts only.'),'danger'),50); return; }
     render0.apply(T,arguments); const tools=document.querySelector('.appbar .tools'); if(tools&&!document.getElementById('cloudChip')) tools.insertAdjacentHTML('afterbegin',chip());
+    if(tools&&!document.getElementById('soBtn')){ tools.insertAdjacentHTML('beforeend','<button type="button" class="btn btn-ghost btn-sm" id="soBtn">⎋ '+L('خروج','Sign out')+' <span class="xs muted">('+esc(C.profile.username)+')</span></button>'); document.getElementById('soBtn').onclick=()=>C.logout(); }
     if(h==='fac'&&C.isFacRole()&&Date.now()-lastPull>15000){ lastPull=Date.now(); C.sync({pull:true}).then(r=>{ if(r&&r.changed&&location.hash.startsWith('#fac')) render0.apply(T); }); } };
 }
 function loginView(main){
