@@ -142,7 +142,7 @@ T.render=function(){ document.querySelectorAll('.fac-obs-fab').forEach(x=>x.remo
   const C=CL(); const signed=C&&C.enabled?!!(C.profile&&!C.profile.must_change_password):true;
   if(!signed||!isStudent()) return render0.apply(T,arguments);
   if(st.loadedFor!==myCode()){ main.innerHTML='<p class="muted" role="status">'+L('جارٍ التحميل…','Loading…')+'</p>'; loadMine().catch(e=>{ console.warn('measures',e); st.loadedFor=myCode(); st.consent=st.consent||null; }).then(()=>T.render()); return; }
-  if(cloud()&&st.consent===null&&!['consent','account','help'].includes(h)){ sessionStorage.setItem('tcs.consentNext','#'+(location.hash||'#hub').slice(1)); location.replace('#consent'); return; }
+  if(cloud()&&st.consent===null&&!['consent','account','help'].includes(h)&&!sessionStorage.getItem('tcs.consentAsked')){ sessionStorage.setItem('tcs.consentAsked','1'); sessionStorage.setItem('tcs.consentNext','#'+(location.hash||'#hub').slice(1)); location.replace('#consent'); return; } // shown once per sign-in, never blocks
   render0.apply(T,arguments);
   if(h==='hub'&&myCode()){ const t=main.querySelector('h1'); if(t&&!main.querySelector('.measures-card')) t.insertAdjacentHTML('afterend',hubCard()); }
 };

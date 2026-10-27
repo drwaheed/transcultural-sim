@@ -23,7 +23,7 @@ T.render=function(){ const main=document.getElementById('main'); const parts=(lo
   if(h==='start'){ const f=main.querySelector('#startForm'); if(!f) return;
     const cy=f.querySelector('input[name=cycle][value="'+env.currentCycle+'"]'); if(cy&&!cy.checked){ cy.checked=true; cy.dispatchEvent(new Event('change',{bubbles:true})); }
     const md=f.querySelector('input[name=mode][value="'+env.mode+'"]'); if(md&&!md.checked){ md.checked=true; md.dispatchEvent(new Event('change',{bubbles:true})); }
-    if(!fac&&env.mode==='research'){ const p=f.querySelector('input[name=mode][value=practice]'); if(p){ p.disabled=true; p.closest('label').insertAdjacentHTML('beforeend','<span class="xs muted"> 🔒 '+L('وضع البحث مفروض من الميسّر','Research mode set by facilitator')+'</span>'); } }
+    if(false){ const p=f.querySelector('input[name=mode][value=practice]'); if(p){ p.disabled=true; p.closest('label').insertAdjacentHTML('beforeend','<span class="xs muted"> 🔒 '+L('وضع البحث مفروض من الميسّر','Research mode set by facilitator')+'</span>'); } }
     if(!fac){ const sel=f.querySelector('#scSel'); const apply=()=>{ [...sel.options].forEach(o=>{ const lk=K.locked('scenario',o.value); o.disabled=lk; if(lk&&!/🔒/.test(o.textContent)) o.textContent+=' 🔒'; }); if(sel.selectedOptions[0]&&sel.selectedOptions[0].disabled){ const ok=[...sel.options].find(o=>!o.disabled); if(ok) sel.value=ok.value; } };
       if(sel){ apply(); f.addEventListener('change',()=>setTimeout(apply,0)); }
       f.addEventListener('submit',e=>{ if(sel&&K.locked('scenario',sel.value)){ e.preventDefault(); e.stopImmediatePropagation(); T.toast(L('هذا السيناريو مقفل حالياً.','This scenario is currently locked.'),'danger'); } },true); } }

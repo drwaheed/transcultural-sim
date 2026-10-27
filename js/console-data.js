@@ -104,7 +104,7 @@ K.studentStats=code=>{ const p=T.prog?T.prog(code):(T.db.progress[code]||{}); co
   return {code,mDone,mSeen,mTotal:mods.length,qAvg,qN:qz.length,ses,sesDone,cyc,turns,warn,obs,last,engage,status,disabled:!!(pr&&pr.disabled),journal:(p.journal||[]),notes}; };
 K.STATUS={not_started:['',['لم يبدأ','Not started']],in_progress:['info',['قيد التقدم','In progress']],completed:['ok',['مكتمل','Completed']],at_risk:['danger',['معرّض للخطر','At risk']]};
 K.badge=st=>{ const x=K.STATUS[st]; return '<span class="badge '+x[0]+'">'+(st==='at_risk'?'⚠ ':st==='completed'?'✓ ':'')+T.esc(T.lang()==='ar'?x[1][0]:x[1][1])+'</span>'; };
-K.locked=(kind,id)=>{ const e=K.env(), m=e[kind==='module'?'modules':'scenarios'][id]; if(!m) return false; return !!(m['c'+e.currentCycle]===false||m.all===false); };
+K.locked=()=>false; // all content open: no module/scenario locks (user decision 2026-10-27)
 K.isFacNow=()=>T.isFac();
 /* ---------- hooks: cloud pull/sync, presence, LLM proxy, commands poll ---------- */
 function hook(){ const C=CL(); if(!C||!C.enabled||hook.done) return; hook.done=true;

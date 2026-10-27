@@ -92,7 +92,7 @@ T.route('start', main=>{
     '<button class="btn btn-primary btn-lg" type="submit" style="width:100%">'+L('متابعة إلى التهيئة','Continue to prebriefing')+' ←</button>'+
    '</div></form>';
   const f=main.querySelector('#startForm'), sel=f.querySelector('#scSel'), hint=f.querySelector('#scHint');
-  const upd=()=>{ const mode=f.mode.value, cyc=f.cycle.value; if(mode==='research'){ sel.value=cyc==='1'?s.researchScenarioC1:s.researchScenarioC2; sel.disabled=true; hint.textContent=L('مقفل في وضع البحث وفق الإعدادات (S2 للدورة 1 وS5 للدورة 2 افتراضياً).','Locked in research mode per settings (S2 for Cycle 1, S5 for Cycle 2 by default).'); } else { sel.disabled=false; hint.textContent=L('اختر أي سيناريو للتدريب.','Pick any scenario to practise.'); }
+  const upd=()=>{ const mode=f.mode.value, cyc=f.cycle.value; sel.disabled=false; hint.textContent=L('جميع السيناريوهات الثمانية مفتوحة: اختر السيناريو الذي تريد تعلّمه بأي ترتيب.','All 8 scenarios are open: choose the one you want to learn, in any order.');
     f.querySelector('#debriefPick').hidden=mode!=='practice'; };
   f.addEventListener('change',upd); upd();
   const tc=f.querySelector('#teamCode');

@@ -69,7 +69,7 @@ T.route('measure',(main,id)=>{
 });
 T.route('extras',(main,id)=>{
   const S=U.cur(id); if(!S) return U.notFound(main); const sc=T.scenario(S.scenario);
-  if(S.status==='measure') return T.go('measure/'+id);
+  if(S.status==='measure'){ S.status='extras'; T.save(true); } // non-blocking: questionnaire optional
   const R=E.Debrief.report(S), A=R.A;
   main.innerHTML='<h1>'+L('تعلّم ما بعد الجلسة','Post-session learning')+' · '+esc(S.team)+'</h1><div class="alert info small">ℹ️ '+L('تُعرض هذه المواد بعد القياس وبالطريقة نفسها في الدورتين. المؤشرات استكشافية وليست للتقييم.','Shown after measurement, identically in both cycles. Indicators are exploratory, not for grading.')+'</div>'+
   '<div class="grid g2"><section class="card" aria-labelledby="ccr"><h2 id="ccr">🌍 '+L('تقرير الكفاءة الثقافية للفريق','Team cultural-competence report')+'</h2>'+
