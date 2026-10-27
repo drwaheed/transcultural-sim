@@ -278,6 +278,9 @@ const Agents={
       (allowed?('- You MAY now reveal this information, in your own words: '+allowed.fact+'\n'):'- Do NOT reveal any hidden information this turn.\n')+
       (unrevealed?('- NEVER mention or hint at these still-hidden facts:\n'+unrevealed+'\n'):'')+
       '- Content guide (meaning to convey): "'+m.t+'"\n'+
+      (/^\((through the interpreter|glances at [^)]+)\)/i.test(m.t)?'- Start your reply with exactly this stage cue: '+m.t.match(/^\([^)]*\)/)[0]+'\n':'')+
+      (S.flags._interp&&m.fb!=='barrier'?'- An interpreter / simple language is now being used: you DO understand the student (including Arabic), answer the content normally.\n':'')+
+      (m.fb==='barrier'?'- You did NOT understand the student. Show it clearly and ask for simple English, slowly, or an interpreter. Do not answer the question.\n':'')+
       '- Never teach, never diagnose, never give clinical advice, never say you are an AI or a simulation. No stereotypes. No phone numbers, laws or hotlines. No graphic content.\n'+
       (a.judg||a.stereo?'- The student was judgmental: respond briefly and a little hurt, without lecturing.\n':'');
   },
