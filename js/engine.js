@@ -31,10 +31,57 @@ const GIGER={
 const DOMAINS=Object.keys(GIGER);
 const LEAK={med_stop:/stopp?(ed)? (taking )?(my |the )?(tablets|medicines?|pills)/i,fasting_plan:/i (will|am going to) fast/i,herbal_mix:/(herb|mixture)/i,hypo_history:/(dizz|sweat|shak)/i,partial_disclosure:/(angry|scared when|when he drinks|hurts? me)/i,risk:/(threat|weapon)/i,hidden_cases:/(five|sixteen|\d+) (are |more )?(sick|ill)/i,raita:/(raita|yoghurt|yogurt).{0,40}(outside|hours|fridge)/i,grandson:/grandson/i,measles_brother:/(brother|sister) died/i,carer_strain:/(back hurts|my back)/i,maryam_worry:/(wake up at night|sleep badly)/i,hiding:/(don'?t check|skip).{0,20}(lunch|school)/i};
 function lc(s){ return String(s||'').toLowerCase().replace(/[’`]/g,"'"); }
-function anyRx(list, text){ let n=0; for(const k of (list||[])){ try{ if(new RegExp(k,'i').test(text)) n++; }catch(e){ if(text.includes(k)) n++; } } return n; }
-function matchLen(list,text){ let m=0; for(const k of (list||[])){ try{ const r=new RegExp(k,'i').exec(text); if(r) m=Math.max(m,r[0].length); }catch(e){} } return m; }
+/* keywords that start with a letter are anchored at a word start ('eat' must not fire inside 'breathing', 'app' inside 'happy') */
+const _rxC={}; function kwRx(k){ return _rxC[k]||(_rxC[k]=new RegExp((/^[a-z]/i.test(k)?'\\b':'')+k,'i')); }
+function anyRx(list, text){ let n=0; for(const k of (list||[])){ try{ if(kwRx(k).test(text)) n++; }catch(e){ if(text.includes(k)) n++; } } return n; }
+function matchLen(list,text){ let m=0; for(const k of (list||[])){ try{ const r=kwRx(k).exec(text); if(r) m=Math.max(m,r[0].length); }catch(e){} } return m; }
+/* Normaliser: common typos + English synonyms + Arabic → canonical English concept words (appended, never shown) */
+const TYPO=[[/\bwich\b/g,'which'],[/\bfell\b/g,'feel'],[/\bfin[ia]n[ct]ial\b/g,'financial'],[/\bmed[ei]cin(e|es)?\b/g,'medicine'],[/\bpres+ure\b/g,'pressure'],[/\bdiab[ei]t[ie]?s\b/g,'diabetes'],[/\bur\b/g,'your'],[/\bu\b/g,'you'],[/\bplz\b/g,'please'],[/\basses\b/g,'assess'],[/\bsympto?ms?\b/g,'symptoms'],[/\bsings\b/g,'signs'],[/\bchild(ren)?s\b/g,'children']];
+const LEX=[
+ [/(\b(the|ur|your|ma|his|her) (son|boy|kid|child)\b|\b(son|boy|kid|child)\b|ابن|ولد|طفل|الصغير)/,'your son child'],
+ [/(\bdaughter\b|\bgirl\b|بنت|ابنت)/,'your daughter'],
+ [/(\bsick\b|\bill(ness)?\b|unwell|not well|symptom|مريض|مرض|تعبان|اعراض|أعراض)/,'sick symptoms'],
+ [/(since when|how long|for how long|منذ متى|من امتى|من متى)/,'how long since when'],
+ [/(\b(relieve|reliev|soothe|manage) |what do you do (for|when|to help)|home remed|بتعملي ايه|تعالج)/,'remedies what do you do for'],
+ [/(\b(money|cost|costs|expens|income|salary|financial|material problem|pay for)|مال|فلوس|مادي|تكلف|دخل)/,'money financ afford cost'],
+ [/(دواء|ادوية|أدوية|علاج|حبوب)/,'medicine tablets'],
+ [/(ضغط)/,'blood pressure'],[/(سكر)/,'sugar diabetes'],[/(تدخين|سجائر|يدخن|سيجار)/,'smoking'],
+ [/(السلام|سلام عليكم|مرحبا|أهلا|اهلا|صباح الخير|مساء الخير)/,'assalam hello'],
+ [/(كيف حالك|كيفك|ازيك|إزيك|عامل ايه|كيف الحال)/,'how are you'],
+ [/(\btreat (a|the|your) low\b|\b(a|the) (low|hypo)\b|هبوط)/,'juice glucose sign of low what to do if'],
+ [/(move around|get around|mobility|walking)/,'walk'],
+ [/(\b(he|him|his)\b.*\b(sick|ill|infect|fever|temperature|cough|doctor|symptom)|\b(sick|ill|infect|fever|temperature|cough|doctor)\w*\b.*\b(he|him|his)\b|\brahman\b(?! family))/,'your son'],
+ [/(temperature|fever|حرارة|سخونة|infection|التهاب|\bdoctor|طبيب|دكتور|pediatric|respiratory)/,'sick chest infection'],
+ [/(physical exam|stethoscope|\blungs?\b|bring him|assess the chil|examine (him|the child)|افحص|فحص)/,'your son chest'],
+ [/(house condition|home condition|take (a )?round|tour|look around|المنزل|البيت|السكن)/,'home environment bedroom'],
+ [/(how are you doing|how are things|how is everything|is every ?thing (all )?right)/,'how are you feeling'],
+ [/(daily (activit|routine)|your day|يومك)/,'routine'],[/(\bneeds?\b(?!.*interpret)|احتياج)/,'support who helps'],
+ [/(عائلة|عائله|اسرة|أسرة|اولاد|أولاد|اطفال|أطفال|كم طفل)/,'family household how many children'],
+ [/(رمضان|صيام|صوم|تصوم|يصوم|ستصوم)/,'ramadan fast fasting'],
+ [/(\biftar\b|\bsuhoor\b|\bbreakfast\b|\blunch\b|\bdinner\b|اكل|أكل|طعام|افطار|إفطار|سحور|وجبة)/,'food eat meal'],
+ [/(نوم|ينام|تنام|غرفة)/,'sleep bedroom'],[/(زوج)/,'husband'],[/(مترجم|ترجم|لغتك)/,'interpreter'],
+ [/(اعشاب|أعشاب|خلطة)/,'herbal herb remedy'],[/(مدرسة|المدرسه|المدرسة)/,'school'],
+ [/(عيادة|مستشفى|مركز صحي|المركز الصحي|موعد)/,'clinic health centre'],
+ [/(قلق|خايف|خائف|خوف)/,'worried worry'],[/(\bcough|كحة|كحه|سعال|ضيق تنفس|تنفس|breathing|breathe)/,'cough breath'],
+ [/(\bwork\b|\bjob\b|شغل|عمل|وظيف)/,'job work'],[/(شكرا|شكراً|thanks)/,'thank you'],
+ [/(\b(check|examine|assess|see|look at) (on )?(the|your|ur) (son|boy|child|kid)\b)/,'your son chest'],
+ [/(\bfeel(ing)?\b|\bmood\b|\bstressed?\b|\bcoping\b)/,'how are you feeling']
+];
+function hasAr(t){ return /[\u0600-\u06FF]/.test(t); }
+function arabicShare(t){ const ar=(t.match(/[\u0600-\u06FF]/g)||[]).length, la=(t.match(/[a-z]/gi)||[]).length; return ar/Math.max(1,ar+la); }
+function expand(text){ let t=lc(text); TYPO.forEach(([r,w])=>{ t=t.replace(r,w); }); const add=[]; LEX.forEach(([r,w])=>{ if(r.test(t)) add.push(w); }); return add.length?t+' ;; '+add.join(' '):t; }
+/* fuzzy fallback: content-word overlap with a topic's keywords (weight 1) and its scripted lines (weight 0.5) */
+const STOP=new Set('what when where which while with would could should about there their your yours this that these those have from they them then than been being does were will just very much many some more most also into only over such tell know like want need please okay thank thanks hello really maybe here help nurse nurses student students today going come came good well right said says time make made take ask asking question questions'.split(' '));
+function stems(t){ return (lc(t).match(/[a-z]{4,}/g)||[]).filter(w=>!STOP.has(w)).map(w=>w.slice(0,5)); }
+function fuzzyTopic(S,sc,a){ const q=new Set(stems(a.text)); if(!q.size) return null; let best=null,bs=0;
+  sc.topics.forEach(tp=>{ if(tp.judg||tp.id==='greet') return; const kw=new Set(stems((tp.kw||[]).join(' ').replace(/\\b|[\\()|?.*+\[\]^$]/g,' '))), tx=new Set(stems([tp.warm,tp.neutral].join(' ')));
+    let v=0; q.forEach(w=>{ if(kw.has(w)) v+=1; else if(tx.has(w)) v+=0.5; }); v-=(S.topicUse[tp.id]||0)*0.2; if(v>bs){ bs=v; best=tp; } });
+  return bs>=1?best:null; }
+/* Deliberate, recognisable language-barrier design (per scenario). ar:false = persona does not understand Arabic. */
+const LANG={S2:{ar:false,simple:true,who:'p'},S5:{ar:true,simple:true,who:'p'}};
+const INTERP_RX=/(interpret|translat|مترجم|ترجم|your (own )?language|bengali|urdu|hindi|speak slowly|simple (words|english|language)|slowly|بلغتك|ببطء)/;
 function analyze(text){
-  const t=lc(text).trim(), words=t.split(/\s+/).filter(Boolean);
+  const t=expand(text).trim(), words=lc(text).trim().split(/\s+/).filter(Boolean);
   const a={text:t, words:words.length, greet:RX.greet.test(t), intro:RX.intro.test(t), empathy:RX.empathy.test(t), consent:RX.consent.test(t), judg:RX.judg.test(t), stereo:RX.stereo.test(t), jargon:RX.jargon.test(t), init:RX.init.test(t), pii:RX.pii.test(text), pause:RX.pause.test(t)};
   a.question=/\?\s*$/.test(t)||RX.openStart.test(t)||RX.closedStart.test(t);
   a.open=(RX.openStart.test(t)&&!RX.closedStart.test(t))||RX.openAny.test(t);
@@ -135,8 +182,8 @@ const Orchestrator={
     // reveal after trust update
     const rv=Agents.revealCheck(S,sc,a);
     let msgs=reply.msgs; if(rv.reveal){ msgs=reply.flagMsgs.concat([{s:rv.reveal.s,t:rv.reveal.t,reveal:rv.reveal.id}]); }
-    else if(rv.blocked && !reply.topicHit){ msgs=reply.flagMsgs.concat([{s:rv.blocked.s,t:rv.blocked.blocked||reply.msgs[0]?.t,near:rv.blocked.id}]); }
-    if(!msgs.length) msgs=[Agents.fallback(S,sc,to)];
+    else if(rv.blocked && (!reply.topicHit||reply.fuzzy) && !reply.barrier){ let bt=rv.blocked.blocked||reply.msgs[0]?.t; const privF=(rv.blocked.needFlags||[]).find(f=>!S.flags[f]&&/privat/.test(f)); if(privF&&bt&&bt[0]!=='('){ const o=sc.personas.find(x=>x.id!==rv.blocked.s&&x.id!=='f2'&&!/interpret/i.test(x.name)); if(o) bt='(glances at '+o.short+') '+bt; } msgs=reply.flagMsgs.concat([{s:rv.blocked.s,t:bt,near:rv.blocked.id}]); }
+    if(!msgs.length) msgs=[Agents.fallback(S,sc,to,a)];
     // LLM generation (keeps deterministic orchestration; only wording comes from the model)
     const out=[];
     for(const m of msgs.slice(0,2)){
@@ -144,7 +191,7 @@ const Orchestrator={
       if(S.engine==='llm'){
         try{ const g=await Agents.llmReply(S,sc,m,a,text); if(g){ txt=g.text; src=g.src; } }catch(err){ log(S,'guard','guardrail','LLM error → scripted fallback: '+String(err.message||err).slice(0,120)); S.guard.push({t:simElapsed(S),type:'llm_error'}); }
       }
-      const ev=log(S,'agent',m.s,txt,{persona:persona(sc,m.s).name,reveal:m.reveal||null,near:m.near||null,src,band:trustBand(S.trust)});
+      const ev=log(S,'agent',m.s,txt,{persona:persona(sc,m.s).name,reveal:m.reveal||null,near:m.near||null,topic:m.topic||null,fb:m.fb||null,src,band:trustBand(S.trust)});
       if(m.reveal){ S.revealed.push(m.reveal); log(S,'reveal','orchestrator',m.reveal,{card:m.reveal,student:by}); }
       out.push(ev);
     }
@@ -164,18 +211,25 @@ const Orchestrator={
 /* ------------------------------ Patient & Family agents ------------------------------ */
 const Agents={
   pickTopic(S,sc,a,to){
-    let best=null, bs=0;
+    let best=null, bs=-1e9; // a keyword hit always wins over the fallback, however often the topic was used
     sc.topics.forEach((tp,i)=>{ let sc_=anyRx(tp.kw,a.text); if(!sc_) return; sc_+=matchLen(tp.kw,a.text)/25; if(tp.judg) sc_+=2; if(to&&to!=='all'&&tp.s===to) sc_+=0.5; sc_-=(S.topicUse[tp.id]||0)*0.3; if(sc_>bs){bs=sc_;best=tp;} });
-    return best?{tp:best,score:bs}:null;
+    return best?{tp:best,score:Math.max(bs,0.1)}:null;
   },
   offline(S,sc,a,to){
     const flagMsgs=[]; let flagTrust=0;
     (sc.flags||[]).forEach(f=>{ if(!S.flags[f.id]&&anyRx(f.kw,a.text)&&!(a.judg&&f.id!=='private')){ S.flags[f.id]=true; log(S,'flag','orchestrator',f.label,{flag:f.id}); if(f.say) flagMsgs.push({s:f.say.s,t:f.say.t}); if(f.trust) flagTrust+=f.trust; } });
-    const pk=this.pickTopic(S,sc,a,to); const tp=pk&&!(flagMsgs.length&&pk.score<1.6&&!pk.tp.judg)?pk.tp:null; let msgs=flagMsgs.slice(), topicTrust=0;
+    let interpNow=false; if(INTERP_RX.test(a.text)&&LANG[sc.id]&&!S.flags._interp){ interpNow=true; S.flags._interp=true; log(S,'flag','orchestrator','Interpreter / simple language used',{flag:'_interp'}); }
+    const L=LANG[sc.id], arIn=hasAr(a.text)&&arabicShare(a.text.split(' ;; ')[0])>0.5;
+    if(L&&!L.ar&&arIn&&!S.flags._interp&&!(a.greet&&a.words<=4)) return {msgs:flagMsgs.concat([{s:L.who,t:'(looks confused) Sorry... I do not understand Arabic well. Please, simple English, slowly... or maybe an interpreter?',fb:'barrier'}]),flagMsgs,topicTrust:0,flagTrust,topicHit:true,barrier:true};
+    let pk=this.pickTopic(S,sc,a,to); if(!pk&&!flagMsgs.length&&!(a.judg||a.stereo)){ const ft=fuzzyTopic(S,sc,a); if(ft) pk={tp:ft,score:1,fuzzy:true}; }
+    if(interpNow&&(!pk||pk.tp.id==='consent')){ const lt=sc.topics.find(x=>x.id==='language'); if(lt) pk={tp:lt,score:2}; }
+    const tp=pk&&!(flagMsgs.length&&pk.score<1.6&&!pk.tp.judg)?pk.tp:null; let msgs=flagMsgs.slice(), topicTrust=0;
+    if(!pk&&!flagMsgs.length&&!(a.judg||a.stereo)){ const rc=sc.cards.find(c=>S.revealed.includes(c.id)&&anyRx(c.kw,a.text)); if(rc){ const ct=rc.t.replace(/^\([^)]*\)\s*/,''); msgs.push({s:rc.s,t:'As I told you, '+ct.charAt(0).toLowerCase()+ct.slice(1),topic:'recall:'+rc.id}); return {msgs,flagMsgs,topicTrust:0,flagTrust,topicHit:true}; } }
     if(tp){
       S.topicUse[tp.id]=(S.topicUse[tp.id]||0)+1; topicTrust=tp.trust||0;
       const band=(a.judg||a.stereo)&&!tp.judg?'guarded':trustBand(S.trust+(tp.trust||0));
-      let t=tp[band]||tp.neutral; if(S.topicUse[tp.id]>1&&!tp.judg&&t[0]!=='(') t=['As I said, ','Like I told you, ',''][S.topicUse[tp.id]%3]+t.charAt(0).toLowerCase()+t.slice(1);
+      let t=tp[band]||tp.neutral; if(S.topicUse[tp.id]>1&&S.topicUse[tp.id]%3&&!tp.judg&&t[0]!=='(') t=['','As I said, ','Like I told you, '][S.topicUse[tp.id]%3]+(/^(I\b|S\b|[A-Z][a-z]+ [A-Z])/.test(t)||sc.personas.some(x=>t.startsWith(x.short))?t:t.charAt(0).toLowerCase()+t.slice(1));
+      if(L&&!L.ar&&arIn&&S.flags._interp&&t[0]!=='(') t='(through the interpreter) '+t;
       msgs.push({s:tp.s,t,topic:tp.id});
     } else if(a.judg||a.stereo){
       const who=(to&&to!=='all'&&sc.judgedReply[to])?to:(sc.judgedReply.p?'p':Object.keys(sc.judgedReply)[0]); msgs.push({s:who,t:sc.judgedReply[who]});
@@ -185,7 +239,7 @@ const Agents={
     } else if((a.greet||a.intro)&&!flagMsgs.length){
       const g=sc.topics.find(x=>x.id==='greet'); if(g) msgs.push({s:g.s,t:g[trustBand(S.trust)]});
     }
-    return {msgs, flagMsgs, topicTrust, flagTrust, topicHit:!!tp};
+    return {msgs, flagMsgs, topicTrust, flagTrust, topicHit:!!tp, fuzzy:!!(pk&&pk.fuzzy)};
   },
   revealCheck(S,sc,a){
     let blocked=null;
@@ -201,7 +255,17 @@ const Agents={
     }
     return {blocked};
   },
-  fallback(S,sc,to){ const who=to&&to!=='all'&&sc.fallback[to]?to:'p'; const arr=sc.fallback[who]||['...']; S.topicUse['_fb'+who]=(S.topicUse['_fb'+who]||0)+1; return {s:who,t:arr[S.topicUse['_fb'+who]%arr.length]}; },
+  /* contextual, in-character fallback: classify what the student did instead of rotating random lines */
+  fallback(S,sc,to,a){ const who=to&&to!=='all'&&sc.fallback[to]?to:'p'; const arr=sc.fallback[who]||['...']; const k='_fb'+who; S.topicUse[k]=(S.topicUse[k]||0)+1; const n=S.topicUse[k];
+    a=a||{text:'',words:0}; const t=a.text.split(' ;; ')[0], L=LANG[sc.id];
+    if(/(\bthank|\bbye\b|goodbye|see you|take care|we are leaving|we (will|have to) go|مع السلامة|شكرا)/.test(t)) return {s:who,t:['(smiles) Thank you for coming.','Thank you. You are welcome here.'][n%2],fb:'closing'};
+    if(!a.question&&/(\b(you should|you can|you need|try to|we (advise|recommend|suggest)|i (advise|recommend|suggest)|it is (important|better)|we will|i will|let me|let's|we can)\b|ننصح|لازم)/.test(t)) return {s:who,t:['(nods) Okay... I understand. I will try.','Okay. Can you tell me what to do first?'][n%2],fb:'ack'};
+    if(!a.question&&a.words<=2&&!/[a-z؀-ۿ]{4,}/.test(t)) return {s:who,t:'(nods and waits for your question)',fb:'wait'};
+    if(L&&L.simple&&!S.flags._interp&&(a.words>20||a.jargon)) return {s:L.who,t:'(looks unsure) Sorry... too many words. One question, in simple English, please?',fb:'barrier'};
+    if(a.question){ const others=sc.personas.filter(x=>x.id!==who&&!/interpret/i.test(x.name)).map(x=>x.short); const about=who==='p'&&others.length?(' Do you ask about me, or about '+others.join(' or ')+'?'):'';
+      if(n%3===0) return {s:who,t:arr[(n/3|0)%arr.length],fb:'scripted'};
+      return {s:who,t:(L&&L.simple?'Sorry, I do not understand the question.':'Sorry, I am not sure what you mean.')+about,fb:'clarify'}; }
+    return {s:who,t:arr[n%arr.length],fb:'scripted'}; },
   systemPrompt(S,sc,m,a){
     const p=persona(sc,m.s), others=sc.personas.filter(x=>x.id!==m.s).map(x=>x.name).join(', ');
     const unrevealed=sc.cards.filter(c=>!S.revealed.includes(c.id)&&c.id!==m.reveal).map(c=>'['+c.id+'] '+c.fact).join('\n');
