@@ -188,8 +188,9 @@ const Orchestrator={
     const out=[];
     for(const m of msgs.slice(0,2)){
       let txt=m.t, src='script';
-      if(S.engine==='llm'){
-        try{ const g=await Agents.llmReply(S,sc,m,a,text); if(g){ txt=g.text; src=g.src; } }catch(err){ log(S,'guard','guardrail','LLM error → scripted fallback: '+String(err.message||err).slice(0,120)); S.guard.push({t:simElapsed(S),type:'llm_error'}); }
+      // circuit breaker: after a provider error (credit/auth/429/timeout) the session silently stays on the scripted engine
+      if(S.engine==='llm'&&!(S.llmDownUntil&&Date.now()<S.llmDownUntil)){
+        try{ const g=await Agents.llmReply(S,sc,m,a,text); if(g){ txt=g.text; src=g.src; } }catch(err){ const msg=String(err.message||err); const hard=/HTTP (401|402|403|404)|credit|quota|insufficient|disabled|not configured/i.test(msg); S.llmDownUntil=Date.now()+(hard?6*3600e3:/HTTP 429|abort|timeout|Failed to fetch|HTTP 5\d\d/i.test(msg)?90e3:30e3); S.llmFallbacks=(S.llmFallbacks||0)+1; log(S,'guard','guardrail','LLM error → scripted fallback: '+msg.slice(0,120)); S.guard.push({t:simElapsed(S),type:'llm_error',hard}); }
       }
       const ev=log(S,'agent',m.s,txt,{persona:persona(sc,m.s).name,reveal:m.reveal||null,near:m.near||null,topic:m.topic||null,fb:m.fb||null,src,band:trustBand(S.trust)});
       if(m.reveal){ S.revealed.push(m.reveal); log(S,'reveal','orchestrator',m.reveal,{card:m.reveal,student:by}); }
@@ -318,7 +319,7 @@ const LLM={
   ready(){ const s=settings(); if(LLM.proxy()) return true; return s.engine==='llm'&&!!s.apiKey&&!!s.endpoint&&!!s.model; },
   async chat(messages, opt){
     opt=opt||{}; const P=LLM.proxy();
-    if(P){ const r=await fetch(P.url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+P.token,'apikey':P.anon},body:JSON.stringify({messages,temperature:opt.temperature??P.temperature,max_tokens:opt.maxTokens||300,...(opt.json?{response_format:{type:'json_object'}}:{})})});
+    if(P){ const pc=new AbortController(); const pt=setTimeout(()=>pc.abort(),opt.timeout||12000); let r; try{ r=await fetch(P.url,{method:'POST',signal:pc.signal,headers:{'Content-Type':'application/json','Authorization':'Bearer '+P.token,'apikey':P.anon},body:JSON.stringify({messages,...(P.test?{test:true}:{}),temperature:opt.temperature??P.temperature,max_tokens:opt.maxTokens||300,...(opt.json?{response_format:{type:'json_object'}}:{})})}); } catch(e){ throw new Error('timeout/network: '+(e.name||e.message)); } finally{ clearTimeout(pt); }
       if(!r.ok){ const b=await r.text(); throw new Error('HTTP '+r.status+' '+b.slice(0,160)); }
       const j=await r.json(); const c=j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content; if(!c) throw new Error('Empty response'); if(j.model) LLM.lastModel=j.model; return c; }
     const s=settings(); const url=s.endpoint.replace(/\/+$/,'')+'/chat/completions';
