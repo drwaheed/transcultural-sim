@@ -292,3 +292,5 @@ fieldset.lk.missing{border:2px solid var(--danger)}fieldset.lk legend{float:left
 body.gated .appbar .nav,body.gated .appbar .menu-btn,body.gated .foot,body.gated .ann-bar,body.gated #cloudChip,body.gated .appbar .tools a[href]:not(#cloudChip),body.gated .fac-obs-fab{display:none!important}
 body.gated .brand{pointer-events:none}
 @media (max-width:640px){#soBtn{padding:0 8px;min-height:36px}#soBtn .xs{display:none}#cloudChip{max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.brand>span:not(.brand-mark){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
+.seq-ar{display:block;margin-top:4px;font-size:.92em;color:var(--muted,#555);font-weight:400;text-align:right}
+.seq-ar-tag{display:inline-block;font-size:.72em;padding:0 6px;margin-inline-end:6px;border:1px solid currentColor;border-radius:8px;opacity:.85}

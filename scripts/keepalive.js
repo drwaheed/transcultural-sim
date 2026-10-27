@@ -1,0 +1,3 @@
+// Lightweight Supabase keep-alive (free projects pause after ~7 days idle). Run: node scripts/keepalive.js  (backup.js also pings)
+const fs=require('fs'); const E={}; fs.readFileSync('/workspace/private/supabase.env','utf8').split('\n').forEach(l=>{const m=l.match(/^(\w+)=(.*)$/); if(m) E[m[1]]=m[2].trim();});
+fetch(E.SUPABASE_URL+'/rest/v1/app_settings?select=key&limit=1',{headers:{apikey:E.SUPABASE_SERVICE_ROLE_KEY,Authorization:'Bearer '+E.SUPABASE_SERVICE_ROLE_KEY}}).then(r=>{ console.log(new Date().toISOString(),'keep-alive',r.status); process.exit(r.ok?0:1); }).catch(e=>{ console.error(e.message); process.exit(1); });

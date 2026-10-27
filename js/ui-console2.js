@@ -28,6 +28,10 @@ function featView(b){ const env=JSON.parse(JSON.stringify(K.env())); const ft=en
   b.querySelector('#ftF').onsubmit=async e=>{ e.preventDefault(); const f=e.target; ['tutor','voice','tts','hints','badges'].forEach(k=>ft[k]=f[k].checked); try{ await K.saveEnv(env,'features'); T.toast(L('حُفظت الميزات','Features saved'),'ok'); }catch(x){ T.toast(x.message,'danger'); } };
   const st=b.querySelector('#llS'); const showSt=r=>{ st.innerHTML=r.configured?'✅ '+L('مفتاح مُعدّ على الخادم','Key configured on server')+(r.model?' · <span class="mono">'+esc(r.model)+'</span>':''):'⚪ '+L('لا يوجد مفتاح على الخادم — يعمل المحرك دون اتصال.','No key on server — offline engine is used.'); };
   K.admin('llm_status',{}).then(showSt).catch(x=>st.textContent=x.message);
+  const hb=document.createElement('div'); hb.className='card'; hb.id='llH'; const f0=b.querySelector('#llF'); f0.after(hb);
+  const drawH=()=>{ const h=K.llmHealth(); hb.innerHTML='<h3>📈 '+L('حالة النموذج اللغوي والرصيد','LLM status & credit')+'</h3><ul class="small"><li>'+L('تحويلات للبديل (24 ساعة): ','Fallbacks (24 h): ')+h.fb+' · '+L('ردود ناجحة: ','OK replies: ')+h.ok+'</li><li>'+L('آخر حالة ناجحة: ','Last OK: ')+(h.lastOk?new Date(h.lastOk).toLocaleString():'—')+'</li><li>'+L('آخر خطأ: ','Last error: ')+(h.lastErr?new Date(h.lastErr).toLocaleString()+' · <span class="mono">'+esc(h.lastCode)+'</span>':'—')+'</li><li>'+L('الرصيد: ','Credit: ')+(h.credit?'🔴 '+L('منتهٍ/منخفض','exhausted/low'):'🟢 '+L('لا مؤشرات نفاد','no exhaustion signals'))+'</li></ul><button type="button" class="btn btn-sm btn-ghost" id="llPing">🔄 '+L('فحص الآن','Check now')+'</button>';
+    hb.querySelector('#llPing').onclick=async()=>{ const r=await K.llmPing(); T.toast(r.ok?L('النموذج يعمل','LLM OK'):(L('خطأ: ','Error: ')+r.code),r.ok?'ok':'danger'); drawH(); }; };
+  drawH();
   const f=b.querySelector('#llF');
   f.onsubmit=async e=>{ e.preventDefault(); try{ let configured=env.llm.configured;
       if(f.ky.value){ await K.admin('set_llm_config',{endpoint:f.ep.value,model:f.mo.value,apiKey:f.ky.value}); f.ky.value=''; configured=true; }

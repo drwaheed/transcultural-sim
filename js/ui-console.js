@@ -8,7 +8,22 @@ const ago=iso=>{ if(!iso) return '—'; const m=Math.round((Date.now()-new Date(
 K.ago=ago; K.kpi=kpi;
 const MODS=()=>window.TCS_MODULES||[];
 const cloudBanner=()=>K.cloud()?'':'<div class="alert info small local-banner" role="note">💻 '+L('الوضع المحلي: تُحفظ إجراءات الإدارة على هذا الجهاز فقط (لا توجد حسابات حقيقية). سجّل الدخول بحساب ميسّر لتطبيقها على البيئة الحية.','Local mode: admin actions are stored on this device only (no real accounts). Sign in with a facilitator account to apply them to the live environment.')+'</div>';
-K.cloudBanner=cloudBanner;
+/* LLM health: fallbacks are counted per session (S.llm, synced in sessions.data); a live check pings the proxy */
+const CREDIT=/credit_balance_exhausted|insufficient_quota/;
+K.llmHealth=()=>{ const since=Date.now()-24*3600e3; let fb=0,ok=0,ses=0,lastOk=null,lastErr=null,lastCode=''; (T.db.sessions||[]).forEach(S=>{ const x=S.llm; if(!x) return; const t=Date.parse(x.lastErrAt||x.lastOkAt||0);
+    if(x.lastOkAt&&(!lastOk||x.lastOkAt>lastOk)) lastOk=x.lastOkAt; if(x.lastErrAt&&(!lastErr||x.lastErrAt>lastErr)){ lastErr=x.lastErrAt; lastCode=x.lastErr||''; } if(t>=since){ fb+=x.fb||0; ok+=x.ok||0; if(x.fb) ses++; } });
+  let live=null; try{ live=JSON.parse(localStorage.getItem('tcs_llm_ping')||'null'); }catch(e){}
+  if(live&&live.at&&(!lastOk||live.at>lastOk)&&live.ok) lastOk=live.at; if(live&&live.at&&!live.ok&&(!lastErr||live.at>lastErr)){ lastErr=live.at; lastCode=live.code||''; }
+  const credit=CREDIT.test(lastCode)&&(!lastOk||lastErr>lastOk); return {fb,ok,ses,lastOk,lastErr,lastCode,credit}; };
+K.llmPing=async()=>{ const P=window.TCS_CLOUD&&TCS_CLOUD.llmProxy&&TCS_CLOUD.llmProxy(); const at=new Date().toISOString(); let res;
+  if(!P) res={at,ok:false,code:'disabled'}; else { try{ const r=await fetch(P.url,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+P.token,'apikey':P.anon},body:JSON.stringify({messages:[{role:'user',content:'Reply OK'}],max_tokens:2})}); const b=await r.text(); res={at,ok:r.ok,status:r.status,code:r.ok?'':((b.match(/credit_balance_exhausted|insufficient_quota|rate_limit_exceeded|invalid_api_key|disabled|not configured/)||['HTTP '+r.status])[0])}; }catch(e){ res={at,ok:false,code:'network/timeout'}; } }
+  localStorage.setItem('tcs_llm_ping',JSON.stringify(res)); return res; };
+const fmtT=t=>t?new Date(t).toLocaleString():'—';
+K.llmBanner=()=>{ const l=K.env().llm||{}; if(!l.enabled) return ''; const h=K.llmHealth();
+  if(h.credit) return '<div class="alert danger small llm-banner" role="alert">💳 '+L('رصيد OpenAI منتهٍ أو منخفض: يستخدم الطلبة الآن المحرك المبرمج البديل. أضف رصيداً ثم اضغط «فحص الآن» في التحكم › الميزات.','OpenAI credit is exhausted/low: students are on the scripted fallback engine. Add credit, then press “Check now” in Control › Features.')+' <span class="xs">('+esc(h.lastCode)+' · '+fmtT(h.lastErr)+')</span></div>';
+  if(h.fb) return '<div class="alert warn small llm-banner" role="status">⚠️ '+L('تحويلات إلى المحرك البديل خلال 24 ساعة: ','LLM fallbacks in the last 24 h: ')+h.fb+' ('+h.ses+' '+L('جلسة','session(s)')+') · '+L('آخر رد ناجح: ','last OK reply: ')+fmtT(h.lastOk)+(h.lastCode?' · <span class="mono xs">'+esc(h.lastCode)+'</span>':'')+'</div>';
+  return '<p class="xs muted llm-banner">🤖 '+L('النموذج اللغوي يعمل · آخر حالة ناجحة: ','LLM OK · last successful status: ')+fmtT(h.lastOk)+'</p>'; };
+K.cloudBanner=()=>cloudBanner()+K.llmBanner();
 /* ---------- OVERVIEW ---------- */
 F.overview=panel=>{
   const R=T.db.roster, st=R.students, all=st.map(s=>K.studentStats(s.code));
@@ -29,7 +44,7 @@ F.overview=panel=>{
   feed.sort((a,b)=>String(b.at).localeCompare(String(a.at)));
   const modRate=MODS().map(m=>({label:m.id,values:[st.length?Math.round(100*st.filter(s=>{ const p=T.db.progress[s.code]; return p&&p.modules&&p.modules[m.id]&&p.modules[m.id].done; }).length/st.length):0]}));
   const scRate=T.scenarios().filter(s=>!s.custom).map(sc=>({label:sc.id,values:[1,2].map(cy=>T.db.sessions.filter(s=>s.scenario===sc.id&&s.cycle===cy&&['done','extras','measure'].includes(s.status)).length)}));
-  panel.innerHTML=cloudBanner()+
+  panel.innerHTML=K.cloudBanner()+
   '<div class="row" style="margin-bottom:var(--s3)"><span class="badge pri">'+L('الدورة الحالية: ','Current cycle: ')+env.currentCycle+'</span><span class="badge '+(env.mode==='research'?'warn':'info')+'">'+(env.mode==='research'?L('وضع البحث','Research mode'):L('وضع التدريب','Practice mode'))+'</span><span class="spacer"></span><button class="btn btn-sm btn-secondary" id="ovRef">⟳ '+L('تحديث','Refresh')+'</button></div>'+
   '<div class="grid g4">'+kpi(activeNow,L('نشطون الآن (10 د)','active now (10 min)'))+kpi(running.length,L('جلسات جارية','running sessions'))+kpi(st.length,L('طلبة','students'))+kpi(Math.round(T.mean(all.map(x=>x.engage))||0)+'%',L('متوسط مؤشر الانخراط','mean engagement index'))+
   kpi(by('completed'),L('مكتمل','completed'))+kpi(by('in_progress'),L('قيد التقدم','in progress'))+kpi(by('not_started'),L('لم يبدأ','not started'))+kpi(by('at_risk'),L('معرّض للخطر','at risk'),by('at_risk')?'kpi-alert':'')+
@@ -44,7 +59,7 @@ F.overview=panel=>{
 /* ---------- STUDENTS LIST ---------- */
 F.students=(panel,arg)=>{ if(arg) return F.student(panel,arg);
   const R=T.db.roster; const st0=JSON.parse(sessionStorage.getItem('tcs.stuF')||'{}');
-  panel.innerHTML=cloudBanner()+'<form class="row filters" id="sfF" role="search" aria-label="'+L('تصفية الطلبة','Filter students')+'" style="margin-bottom:var(--s3)">'+
+  panel.innerHTML=K.cloudBanner()+'<form class="row filters" id="sfF" role="search" aria-label="'+L('تصفية الطلبة','Filter students')+'" style="margin-bottom:var(--s3)">'+
    '<label class="fld" style="margin:0;flex:1;min-width:180px"><span>'+L('بحث','Search')+'</span><input name="q" class="ltr" value="'+esc(st0.q||'')+'" placeholder="S07, T03…"></label>'+
    '<label class="fld" style="margin:0"><span>'+L('الحالة','Status')+'</span><select name="s"><option value="">'+L('الكل','All')+'</option>'+Object.keys(K.STATUS).map(k=>'<option value="'+k+'"'+(st0.s===k?' selected':'')+'>'+(T.lang()==='ar'?K.STATUS[k][1][0]:K.STATUS[k][1][1])+'</option>').join('')+'<option value="disabled"'+(st0.s==='disabled'?' selected':'')+'>'+L('معطّل','Disabled')+'</option></select></label>'+
    '<label class="fld" style="margin:0"><span>'+L('الفريق','Team')+'</span><select name="t"><option value="">'+L('الكل','All')+'</option>'+R.teams.map(t=>'<option'+(st0.t===t.code?' selected':'')+'>'+t.code+'</option>').join('')+'</select></label>'+
